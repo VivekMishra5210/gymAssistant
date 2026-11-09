@@ -34,7 +34,7 @@ Files:
 | `lib/logic/rest_timer_controller.dart` | CREATE: `rest_ends_at` state, `restDurationAfter(set, exercise, next)` rule, ±15s (min now), skip, resume check |
 | `lib/logic/workout_controller.dart` | CREATE: hardcoded workout (Lat Pulldown 4×120, Seated Row 4×120, Barbell Curl 4×90, Hammer Curl 4×90), set state, tick/edit/undo |
 | `lib/ui/workout/*` | CREATE: Active Workout screen, set rows (±2.5 kg, ±1 rep, numeric keyboard), sticky rest panel with ring, End Workout button (simple confirm for now) |
-| `lib/ui/workout/rest_over_dialog.dart` | CREATE: full-screen popup + ~1 s vibration pattern |
+| `lib/ui/workout/rest_over_dialog.dart` | CREATE: full-screen popup + vibration that repeats until Got it |
 | `test/rest_timer_test.dart` | CREATE |
 
 Tasks:

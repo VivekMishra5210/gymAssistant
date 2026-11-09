@@ -153,7 +153,7 @@ Top to bottom:
 
 ### 5.4 Rest-finished popup
 - Full-screen modal dialog: "Rest over 💪" + "Set 3 of Lat Pulldown" or "Next exercise: Barbell Curl (4 sets)".
-- Vibrate (pattern, ~1 s) + a short sound.
+- Vibrate on repeat (0.8 s on / 0.4 s off) until **Got it** is tapped. Plus a short sound if Sound is on (§5.7, added in Phase 5).
 - One button: **Got it** → dismiss → back to the workout screen.
 - If the app was in the background when rest ended, the **local notification** fires instead. Tapping it opens the Active Workout screen, and the popup shows on resume.
 

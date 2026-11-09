@@ -17,54 +17,6 @@
     "ast_hash": "106e43036d11e3e032c468fb35163c63",
     "semantic_hash": "106e43036d11e3e032c468fb35163c63"
   },
-  ".dart_tool/flutter_build/56aab9c3929593e0d7fa642b6e63b7b2/build_hooks_result.json": {
-    "mtime": 1794006897.1778498,
-    "seen": 1794007259.1708157,
-    "ast_hash": "99914b932bd37a50b983c5e7c90ae93b",
-    "semantic_hash": ""
-  },
-  ".dart_tool/flutter_build/56aab9c3929593e0d7fa642b6e63b7b2/link_hooks_result.json": {
-    "mtime": 1794006926.5685432,
-    "seen": 1794007259.1708157,
-    "ast_hash": "e6fcf21cdd48fa2467f4251b795ff064",
-    "semantic_hash": ""
-  },
-  ".dart_tool/flutter_build/56aab9c3929593e0d7fa642b6e63b7b2/native_assets.json": {
-    "mtime": 1794006926.595757,
-    "seen": 1794007259.1708157,
-    "ast_hash": "f3a664e105b4f792c6c7fe4e4d22c398",
-    "semantic_hash": ""
-  },
-  ".dart_tool/flutter_build/56aab9c3929593e0d7fa642b6e63b7b2/outputs.json": {
-    "mtime": 1794006928.6729076,
-    "seen": 1794007259.1708157,
-    "ast_hash": "82431435fd51bdbf8db677d39a8e6cb9",
-    "semantic_hash": ""
-  },
-  ".dart_tool/flutter_build/56aab9c3929593e0d7fa642b6e63b7b2/recorded_uses.json": {
-    "mtime": 1794006897.313905,
-    "seen": 1794007259.1708157,
-    "ast_hash": "99914b932bd37a50b983c5e7c90ae93b",
-    "semantic_hash": ""
-  },
-  ".dart_tool/flutter_build/dart_plugin_registrant.dart": {
-    "mtime": 1794006037.532676,
-    "seen": 1794007259.1708157,
-    "ast_hash": "147d3a4d5a951dedf0dcb62fb2693887",
-    "semantic_hash": ""
-  },
-  ".dart_tool/package_config.json": {
-    "mtime": 1794005951.0549498,
-    "seen": 1794007259.1708157,
-    "ast_hash": "03f013e18505ddc30f646478d2ea959b",
-    "semantic_hash": ""
-  },
-  ".dart_tool/package_graph.json": {
-    "mtime": 1794005951.0554626,
-    "seen": 1794007259.1708157,
-    "ast_hash": "4bed0849973f1df2de5f6949ec896ab9",
-    "semantic_hash": ""
-  },
   "analysis_options.yaml": {
     "mtime": 1794005928.5535882,
     "seen": 1794007259.1708157,
@@ -96,9 +48,9 @@
     "semantic_hash": ""
   },
   "lib/app.dart": {
-    "mtime": 1794005991.876639,
-    "seen": 1794007259.1708157,
-    "ast_hash": "2493bdf9019c7a9ed72a9a4ad49d55c5",
+    "mtime": 1794236959.3374686,
+    "seen": 1794237358.3090775,
+    "ast_hash": "66d441809d16a39763eef420ffc6fe98",
     "semantic_hash": ""
   },
   "lib/core/time/clock.dart": {
@@ -120,9 +72,9 @@
     "semantic_hash": ""
   },
   "test/widget_test.dart": {
-    "mtime": 1794005994.849034,
-    "seen": 1794007259.1708157,
-    "ast_hash": "18671b88288ea88693ef7cf359d9937f",
+    "mtime": 1794237096.6364882,
+    "seen": 1794237358.3090775,
+    "ast_hash": "42a39d26b44e133b06090fbd3998d522",
     "semantic_hash": ""
   },
   "README.md": {
@@ -165,6 +117,48 @@
     "mtime": 1794003060.485946,
     "seen": 1794007259.1708157,
     "ast_hash": "57838d52c318faff743130c3fcfae0c6",
+    "semantic_hash": ""
+  },
+  "lib/data/models/plan_exercise.dart": {
+    "mtime": 1794236873.9356496,
+    "seen": 1794237358.3090775,
+    "ast_hash": "4a58a75e8cc16b95e44046a6c4d5ee2e",
+    "semantic_hash": ""
+  },
+  "lib/logic/rest_timer_controller.dart": {
+    "mtime": 1794236875.5173836,
+    "seen": 1794237358.3090775,
+    "ast_hash": "c6973fc6cda7edbfddf6fca75293d206",
+    "semantic_hash": ""
+  },
+  "lib/logic/workout_controller.dart": {
+    "mtime": 1794236860.0197508,
+    "seen": 1794237358.3090775,
+    "ast_hash": "034a2ebfc46981aa2e26aa9037749fad",
+    "semantic_hash": ""
+  },
+  "lib/ui/dashboard/dashboard_screen.dart": {
+    "mtime": 1794236957.7475195,
+    "seen": 1794237358.3090775,
+    "ast_hash": "a2acbf514d524df7a33af6455d892f69",
+    "semantic_hash": ""
+  },
+  "lib/ui/workout/rest_over_dialog.dart": {
+    "mtime": 1794236956.179422,
+    "seen": 1794237358.3090775,
+    "ast_hash": "d78b7859654cdbb005c7fbd9eada59a9",
+    "semantic_hash": ""
+  },
+  "lib/ui/workout/workout_screen.dart": {
+    "mtime": 1794236934.784594,
+    "seen": 1794237358.3090775,
+    "ast_hash": "023578e2a2732805efa19d106a748a1b",
+    "semantic_hash": ""
+  },
+  "test/rest_timer_test.dart": {
+    "mtime": 1794236998.6349938,
+    "seen": 1794237358.3090775,
+    "ast_hash": "80145f4215c1a8cc28753f162dbf006b",
     "semantic_hash": ""
   }
 }
