@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:vibration/vibration.dart';
 
 /// SPEC §5.4: full-screen "Rest over" popup; vibrates on repeat until dismissed.
-Future<void> showRestOver(BuildContext context, String nextText) async {
+Future<void> showRestOver(
+  BuildContext context,
+  String nextText, {
+  bool vibrate = true,
+}) async {
   // 0.8 s on, 0.4 s off, looping from index 0 until cancelled.
-  Vibration.vibrate(pattern: [0, 800, 400], repeat: 0).ignore();
+  if (vibrate) Vibration.vibrate(pattern: [0, 800, 400], repeat: 0).ignore();
   try {
     await _show(context, nextText);
   } finally {

@@ -8,14 +8,15 @@ import '../../core/time/clock.dart';
 import '../../core/time/dates.dart';
 import '../../logic/cycle_service.dart';
 import '../day_detail/day_detail_screen.dart';
+import '../onboarding/onboarding_view.dart';
+import '../settings/settings_screen.dart';
+import '../widgets/common.dart';
 import '../workout/workout_screen.dart';
-
-String _restText(int s) => '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
 
 String _duration(Duration d) =>
     d.inHours > 0 ? '${d.inHours}h ${d.inMinutes % 60}m' : '${d.inMinutes}m';
 
-typedef _Data = (TodayInfo, History);
+typedef _Data = (TodayInfo, History)?; // null → no split yet (onboarding)
 
 /// SPEC §5.2: Today card, streak row, calendar.
 class DashboardScreen extends StatefulWidget {
@@ -55,11 +56,17 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   void _reload() {
-    if (mounted) setState(() => _data = _load());
+    // Block body: an arrow `=> _data = _load()` returns a Future, which setState rejects.
+    if (mounted) {
+      setState(() {
+        _data = _load();
+      });
+    }
   }
 
   Future<_Data> _load() async {
     final cycle = _cycle;
+    if (!await cycle.hasSplit()) return null;
     final today = await cycle.refresh(); // rest catch-up first, then history
     final history = await cycle.history();
     _armMidnight();
@@ -102,15 +109,31 @@ class _DashboardScreenState extends State<DashboardScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Gym Assistant')),
+      appBar: AppBar(
+        title: const Text('Gym Assistant'),
+        actions: [
+          IconButton(
+            tooltip: 'Settings',
+            icon: const Icon(Icons.settings),
+            onPressed: () async {
+              await Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
+              _reload();
+            },
+          ),
+        ],
+      ),
       body: FutureBuilder<_Data>(
         future: _data,
         builder: (context, snap) {
           if (snap.hasError) return Center(child: Text('${snap.error}'));
-          final data = snap.data;
-          if (data == null) {
+          // Keep showing old data while a reload runs.
+          if (!snap.hasData && snap.connectionState != ConnectionState.done) {
             return const Center(child: CircularProgressIndicator());
           }
+          final data = snap.data;
+          if (data == null) return OnboardingView(onDone: _reload);
           final (info, history) = data;
           return ListView(
             padding: const EdgeInsets.all(12),
@@ -247,7 +270,7 @@ class _DashboardScreenState extends State<DashboardScreen>
               dense: true,
               contentPadding: EdgeInsets.zero,
               title: Text(e.name, style: const TextStyle(fontSize: 16)),
-              trailing: Text('${e.sets} × ${_restText(e.restSeconds)}'),
+              trailing: Text('${e.sets} × ${mmss(e.restSeconds)}'),
             ),
           const SizedBox(height: 8),
           _MainButton('Start Workout', () => _go(_cycle.start)),

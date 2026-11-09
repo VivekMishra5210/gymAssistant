@@ -59,6 +59,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
       showRestOver(
         context,
         _w.restOverText,
+        vibrate: _w.vibrate,
       ).whenComplete(() => _popupOpen = false);
     }
     setState(() {});

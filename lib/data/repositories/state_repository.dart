@@ -3,6 +3,15 @@ import 'package:sqflite/sqflite.dart';
 /// Cycle pointer (SPEC §6): 1-based position + the date it applies from.
 typedef Pointer = ({int position, String since});
 
+/// SPEC §5.7 settings, stored in app_state.
+typedef Settings = ({
+  int graceDays,
+  bool keepScreenOn,
+  bool sound,
+  bool vibration,
+  int defaultRest,
+});
+
 /// The single app_state row (id = 1).
 class StateRepository {
   StateRepository(this._db);
@@ -44,6 +53,25 @@ class StateRepository {
   };
 
   Future<int> graceDays() async => (await _row())['streak_grace_days'] as int;
+
+  Future<Settings> settings() async {
+    final r = await _row();
+    return (
+      graceDays: r['streak_grace_days'] as int,
+      keepScreenOn: r['keep_screen_on'] == 1,
+      sound: r['sound_on'] == 1,
+      vibration: r['vibration_on'] == 1,
+      defaultRest: r['default_rest_sec'] as int,
+    );
+  }
+
+  Future<void> saveSettings(Settings s) => _db.update('app_state', {
+    'streak_grace_days': s.graceDays,
+    'keep_screen_on': s.keepScreenOn ? 1 : 0,
+    'sound_on': s.sound ? 1 : 0,
+    'vibration_on': s.vibration ? 1 : 0,
+    'default_rest_sec': s.defaultRest,
+  }, where: 'id = 1');
 
   Future<({DateTime? endsAt, String? label})> rest() async {
     final r = await _row();

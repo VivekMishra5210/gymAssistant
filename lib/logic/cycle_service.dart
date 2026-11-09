@@ -16,6 +16,16 @@ int advance(int position, int count) => position % count + 1;
 int clampPosition(int position, int count) =>
     position < 1 ? 1 : (position > count ? count : position);
 
+/// After the split was edited: follow the same entry if it still exists,
+/// otherwise clamp (SPEC §6).
+int keepPointer(List<int> oldIds, int position, List<int> newIds) {
+  if (newIds.isEmpty) return 1;
+  final at = position >= 1 && position <= oldIds.length
+      ? newIds.indexOf(oldIds[position - 1])
+      : -1;
+  return at >= 0 ? at + 1 : clampPosition(position, newIds.length);
+}
+
 /// On open/resume: consume rest entries whose day has passed (one per day).
 /// A workout entry is never skipped; it just waits and applies from today.
 ({Pointer pointer, List<String> restDates}) catchUp(
@@ -109,6 +119,36 @@ class CycleService {
 
   String get _today => dateKey(_clock.now());
 
+  /// No workout entry yet → onboarding (SPEC §5.1).
+  Future<bool> hasSplit() async =>
+      (await _plan.entries()).any((e) => !e.isRest);
+
+  /// Onboarding: new split, pointer at entry #1 from today.
+  Future<void> createSplit(List<(EntryType, String)> entries) async {
+    await _plan.createSplit(entries);
+    await _state.setPointer((position: 1, since: _today));
+  }
+
+  Future<Pointer> pointer() => _state.pointer();
+
+  /// Run a split edit (add/delete/reorder), keeping the pointer on its entry.
+  Future<void> editSplit(
+    Future<void> Function(PlanRepository plan) change,
+  ) async {
+    final oldIds = [for (final e in await _plan.entries()) e.id];
+    final p = await _state.pointer();
+    await change(_plan);
+    final newIds = [for (final e in await _plan.entries()) e.id];
+    final pos = keepPointer(oldIds, p.position, newIds);
+    if (pos != p.position) {
+      await _state.setPointer((position: pos, since: p.since));
+    }
+  }
+
+  /// "Set next up": that entry applies from today.
+  Future<void> setNextUp(int position) =>
+      _state.setPointer((position: position, since: _today));
+
   /// Run on app open/resume: rest catch-up, then what the Today card shows.
   Future<TodayInfo> refresh() async {
     final today = _today;
@@ -187,6 +227,7 @@ class CycleService {
       name: s.name,
       startedAt: s.startedAt,
       store: _DbStore(this, s),
+      vibrate: (await _state.settings()).vibration,
     );
     for (final l in s.logs) {
       w.load(l.ex, l.set, weight: l.weight, reps: l.reps, done: true);

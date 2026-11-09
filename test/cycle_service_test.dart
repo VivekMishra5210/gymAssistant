@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gym_assistant/data/models/split_entry.dart';
 import 'package:gym_assistant/logic/cycle_service.dart';
+import 'package:gym_assistant/ui/onboarding/onboarding_view.dart';
 
 SplitEntry w(int pos, String name) =>
     SplitEntry(id: pos, position: pos, type: EntryType.workout, name: name);
@@ -111,5 +112,29 @@ void main() {
       todayState(inProgress: false, doneToday: false, restEntry: false),
       TodayState.workoutDue,
     );
+  });
+
+  test('split edit: pointer follows its entry, else clamps', () {
+    // Reorder [1,2,3,4] → [3,1,2,4]: pointer on id 2 (pos 2) moves to pos 3.
+    expect(keepPointer([1, 2, 3, 4], 2, [3, 1, 2, 4]), 3);
+    // Delete an earlier entry: still on the same entry.
+    expect(keepPointer([1, 2, 3, 4], 3, [2, 3, 4]), 2);
+    // Delete the pointed entry at the end: clamp to the new last.
+    expect(keepPointer([1, 2, 3, 4], 4, [1, 2, 3]), 3);
+    // Adding the first entry to an empty split.
+    expect(keepPointer([], 1, [7]), 1);
+  });
+
+  test('onboarding templates: placeholder names in cycle order', () {
+    expect(templateEntries('WWRWWRR').map((e) => e.$2), [
+      'Workout 1',
+      'Workout 2',
+      'Rest',
+      'Workout 3',
+      'Workout 4',
+      'Rest',
+      'Rest',
+    ]);
+    expect(templateEntries(''), isEmpty);
   });
 }

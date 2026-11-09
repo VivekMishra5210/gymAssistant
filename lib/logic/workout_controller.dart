@@ -64,6 +64,7 @@ class WorkoutController extends ChangeNotifier {
     required this.name,
     DateTime? startedAt,
     this.store = const NoStore(),
+    this.vibrate = true,
   }) : exercises = [for (final p in plan) ExerciseProgress(p)],
        startedAt = startedAt ?? _clock.now(),
        rest = RestTimerController(_clock) {
@@ -77,6 +78,7 @@ class WorkoutController extends ChangeNotifier {
   final DateTime startedAt;
   final RestTimerController rest;
   final WorkoutStore store;
+  final bool vibrate; // settings → rest-over popup
   bool completed = false;
   bool _busy = false;
 

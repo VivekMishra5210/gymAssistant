@@ -12,11 +12,8 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   const clock = SystemClock();
   final db = await openAppDatabase(clock);
-  final cycle = CycleService(
-    clock,
-    PlanRepository(db),
-    StateRepository(db),
-    SessionRepository(db),
-  );
-  runApp(GymApp(clock: clock, cycle: cycle));
+  final plan = PlanRepository(db);
+  final state = StateRepository(db);
+  final cycle = CycleService(clock, plan, state, SessionRepository(db));
+  runApp(GymApp(clock: clock, cycle: cycle, plan: plan, state: state));
 }

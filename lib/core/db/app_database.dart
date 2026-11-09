@@ -84,55 +84,5 @@ Future<Database> openAppDatabase(Clock clock) async {
   );
 }
 
-/// shortcut: seeds a 6 on / 1 off PPL split so M2 is usable; onboarding (M4) lets you build your own.
-const _seedSplit = ['Push', 'Pull', 'Legs', 'Push', 'Pull', 'Legs', 'Rest'];
-const _seedExercises = {
-  'Push': [
-    ('Bench Press', 4, 120),
-    ('Overhead Press', 3, 120),
-    ('Incline Dumbbell Press', 3, 90),
-    ('Lateral Raise', 3, 60),
-    ('Triceps Pushdown', 3, 60),
-  ],
-  'Pull': [
-    ('Lat Pulldown', 4, 120),
-    ('Seated Row', 4, 120),
-    ('Barbell Curl', 4, 90),
-    ('Hammer Curl', 4, 90),
-  ],
-  'Legs': [
-    ('Squat', 4, 150),
-    ('Romanian Deadlift', 3, 120),
-    ('Leg Press', 3, 120),
-    ('Leg Curl', 3, 90),
-    ('Calf Raise', 4, 60),
-  ],
-};
-
-Future<void> _seed(Database db, String today) async {
-  await db.insert('app_state', {'id': 1, 'pointer_since': today});
-  final exerciseIds = <String, int>{};
-  for (var i = 0; i < _seedSplit.length; i++) {
-    final name = _seedSplit[i];
-    final isRest = name == 'Rest';
-    final entryId = await db.insert('split_entry', {
-      'position': i + 1,
-      'type': isRest ? 'rest' : 'workout',
-      'name': name,
-    });
-    final list = _seedExercises[name] ?? const [];
-    for (var j = 0; j < list.length; j++) {
-      final (exName, sets, rest) = list[j];
-      final exId = exerciseIds[exName] ??= await db.insert('exercise', {
-        'name': exName,
-      });
-      await db.insert('plan_exercise', {
-        'split_entry_id': entryId,
-        'exercise_id': exId,
-        'position': j + 1,
-        'sets': sets,
-        'rest_seconds': rest,
-      });
-    }
-  }
-}
+Future<void> _seed(Database db, String today) =>
+    db.insert('app_state', {'id': 1, 'pointer_since': today});
