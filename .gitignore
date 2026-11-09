@@ -1,0 +1,23 @@
+graphify-out/cache/
+graphify-out/.graphify_*
+graphify-out/cost.json
+
+# Flutter / Dart (standard flutter create entries)
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+*.iml
+*.ipr
+*.iws
+.idea/
+.DS_Store
+*.log
+*.swp
+.history
+/android/app/debug
+/android/app/profile
+/android/app/release
+graphify-out/20*/

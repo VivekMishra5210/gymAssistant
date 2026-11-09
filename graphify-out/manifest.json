@@ -1,0 +1,170 @@
+{
+  ".claude/settings.json": {
+    "mtime": 1794001214.0116494,
+    "seen": 1794007259.1708157,
+    "ast_hash": "3b541b9935fcf0831355da956f897645",
+    "semantic_hash": ""
+  },
+  "CLAUDE.md": {
+    "mtime": 1794002228.5252714,
+    "seen": 1794007259.1708157,
+    "ast_hash": "cd4406b01a536a6899b759439f2abebb",
+    "semantic_hash": ""
+  },
+  "SPEC.md": {
+    "mtime": 1793998456.2404766,
+    "seen": 1794000991.8692749,
+    "ast_hash": "106e43036d11e3e032c468fb35163c63",
+    "semantic_hash": "106e43036d11e3e032c468fb35163c63"
+  },
+  ".dart_tool/flutter_build/56aab9c3929593e0d7fa642b6e63b7b2/build_hooks_result.json": {
+    "mtime": 1794006897.1778498,
+    "seen": 1794007259.1708157,
+    "ast_hash": "99914b932bd37a50b983c5e7c90ae93b",
+    "semantic_hash": ""
+  },
+  ".dart_tool/flutter_build/56aab9c3929593e0d7fa642b6e63b7b2/link_hooks_result.json": {
+    "mtime": 1794006926.5685432,
+    "seen": 1794007259.1708157,
+    "ast_hash": "e6fcf21cdd48fa2467f4251b795ff064",
+    "semantic_hash": ""
+  },
+  ".dart_tool/flutter_build/56aab9c3929593e0d7fa642b6e63b7b2/native_assets.json": {
+    "mtime": 1794006926.595757,
+    "seen": 1794007259.1708157,
+    "ast_hash": "f3a664e105b4f792c6c7fe4e4d22c398",
+    "semantic_hash": ""
+  },
+  ".dart_tool/flutter_build/56aab9c3929593e0d7fa642b6e63b7b2/outputs.json": {
+    "mtime": 1794006928.6729076,
+    "seen": 1794007259.1708157,
+    "ast_hash": "82431435fd51bdbf8db677d39a8e6cb9",
+    "semantic_hash": ""
+  },
+  ".dart_tool/flutter_build/56aab9c3929593e0d7fa642b6e63b7b2/recorded_uses.json": {
+    "mtime": 1794006897.313905,
+    "seen": 1794007259.1708157,
+    "ast_hash": "99914b932bd37a50b983c5e7c90ae93b",
+    "semantic_hash": ""
+  },
+  ".dart_tool/flutter_build/dart_plugin_registrant.dart": {
+    "mtime": 1794006037.532676,
+    "seen": 1794007259.1708157,
+    "ast_hash": "147d3a4d5a951dedf0dcb62fb2693887",
+    "semantic_hash": ""
+  },
+  ".dart_tool/package_config.json": {
+    "mtime": 1794005951.0549498,
+    "seen": 1794007259.1708157,
+    "ast_hash": "03f013e18505ddc30f646478d2ea959b",
+    "semantic_hash": ""
+  },
+  ".dart_tool/package_graph.json": {
+    "mtime": 1794005951.0554626,
+    "seen": 1794007259.1708157,
+    "ast_hash": "4bed0849973f1df2de5f6949ec896ab9",
+    "semantic_hash": ""
+  },
+  "analysis_options.yaml": {
+    "mtime": 1794005928.5535882,
+    "seen": 1794007259.1708157,
+    "ast_hash": "6b329a7ef42d44daaecce92f583f8e4e",
+    "semantic_hash": ""
+  },
+  "android/app/build.gradle.kts": {
+    "mtime": 1794005928.5752065,
+    "seen": 1794007259.1708157,
+    "ast_hash": "da4eab475af9acd91fc9f3ceedf2c3cf",
+    "semantic_hash": ""
+  },
+  "android/app/src/main/kotlin/com/vivek/gym_assistant/MainActivity.kt": {
+    "mtime": 1794005928.5887322,
+    "seen": 1794007259.1708157,
+    "ast_hash": "5af7686b8bc9f7b95304065dfacdfac0",
+    "semantic_hash": ""
+  },
+  "android/build.gradle.kts": {
+    "mtime": 1794005928.5983596,
+    "seen": 1794007259.1708157,
+    "ast_hash": "803fe22651fbe96ed401eb0b66a492d1",
+    "semantic_hash": ""
+  },
+  "android/settings.gradle.kts": {
+    "mtime": 1794005928.8101962,
+    "seen": 1794007259.1708157,
+    "ast_hash": "a34513cd87cef855195771f6a457a218",
+    "semantic_hash": ""
+  },
+  "lib/app.dart": {
+    "mtime": 1794005991.876639,
+    "seen": 1794007259.1708157,
+    "ast_hash": "2493bdf9019c7a9ed72a9a4ad49d55c5",
+    "semantic_hash": ""
+  },
+  "lib/core/time/clock.dart": {
+    "mtime": 1794005989.8825254,
+    "seen": 1794007259.1708157,
+    "ast_hash": "d61d92b7d620b15d123d4ec7e936bb34",
+    "semantic_hash": ""
+  },
+  "lib/main.dart": {
+    "mtime": 1794005993.307396,
+    "seen": 1794007259.1708157,
+    "ast_hash": "004eeef21b3ac9c110c3aacb5ae8b577",
+    "semantic_hash": ""
+  },
+  "pubspec.yaml": {
+    "mtime": 1794005946.9847243,
+    "seen": 1794007259.1708157,
+    "ast_hash": "01ca4944c8597e2bd90f4eb5d0ec47cb",
+    "semantic_hash": ""
+  },
+  "test/widget_test.dart": {
+    "mtime": 1794005994.849034,
+    "seen": 1794007259.1708157,
+    "ast_hash": "18671b88288ea88693ef7cf359d9937f",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1794005928.869305,
+    "seen": 1794007259.1708157,
+    "ast_hash": "e5bc6a662a1ec4d198d492828fd4c366",
+    "semantic_hash": ""
+  },
+  "docs/PLAN.md": {
+    "mtime": 1794002673.1763709,
+    "seen": 1794007259.1708157,
+    "ast_hash": "cf6d0c8bfc9f6a3cde4ce3d4a70d8eb2",
+    "semantic_hash": ""
+  },
+  "android/app/src/main/res/mipmap-hdpi/ic_launcher.png": {
+    "mtime": 1794003060.4827905,
+    "seen": 1794007259.1708157,
+    "ast_hash": "13e9c72ec37fac220397aa819fa1ef2d",
+    "semantic_hash": ""
+  },
+  "android/app/src/main/res/mipmap-mdpi/ic_launcher.png": {
+    "mtime": 1794003060.4838524,
+    "seen": 1794007259.1708157,
+    "ast_hash": "6270344430679711b81476e29878caa7",
+    "semantic_hash": ""
+  },
+  "android/app/src/main/res/mipmap-xhdpi/ic_launcher.png": {
+    "mtime": 1794003060.4843748,
+    "seen": 1794007259.1708157,
+    "ast_hash": "a0a8db5985280b3679d99a820ae2db79",
+    "semantic_hash": ""
+  },
+  "android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png": {
+    "mtime": 1794003060.4854152,
+    "seen": 1794007259.1708157,
+    "ast_hash": "afe1b655b9f32da22f9a4301bb8e6ba8",
+    "semantic_hash": ""
+  },
+  "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png": {
+    "mtime": 1794003060.485946,
+    "seen": 1794007259.1708157,
+    "ast_hash": "57838d52c318faff743130c3fcfae0c6",
+    "semantic_hash": ""
+  }
+}
