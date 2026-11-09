@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `eb78980e`
+- Built from commit: `2683423e`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -44,9 +44,9 @@
 ## God Nodes (most connected - your core abstractions)
 1. `SQLite Data Model` - 11 edges
 2. `Split cycle logic (pointer_position / pointer_since)` - 10 edges
-3. `Clock` - 9 edges
-4. `dependencies` - 9 edges
-5. `Plan: Gym Assistant` - 9 edges
+3. `dependencies` - 9 edges
+4. `Plan: Gym Assistant` - 9 edges
+5. `Clock` - 9 edges
 6. `Streak algorithm` - 9 edges
 7. `Project structure (lib/ layout)` - 9 edges
 8. `Locked Decisions` - 8 edges
@@ -56,13 +56,13 @@
 ## Surprising Connections (you probably didn't know these)
 - `RecordingStore` --implements--> `WorkoutStore`  [EXTRACTED]
   test/rest_timer_test.dart → lib/logic/workout_controller.dart
-- `_DashboardScreenState` --references--> `Clock`  [EXTRACTED]
-  lib/ui/dashboard/dashboard_screen.dart → lib/core/time/clock.dart
 - `_DashboardScreenState` --references--> `CycleService`  [EXTRACTED]
   lib/ui/dashboard/dashboard_screen.dart → lib/logic/cycle_service.dart
 - `build` --references--> `CycleService`  [EXTRACTED]
   lib/ui/day_detail/day_detail_screen.dart → lib/logic/cycle_service.dart
-- `build` --references--> `WorkoutController`  [EXTRACTED]
+- `_DashboardScreenState` --references--> `Clock`  [EXTRACTED]
+  lib/ui/dashboard/dashboard_screen.dart → lib/core/time/clock.dart
+- `_WorkoutScreenState` --references--> `WorkoutController`  [EXTRACTED]
   lib/ui/workout/workout_screen.dart → lib/logic/workout_controller.dart
 
 ## Import Cycles
@@ -164,7 +164,7 @@ Cohesion: 0.50
 Nodes (4): WorkoutController, build, _ExerciseCard, _SetRow
 
 ## Knowledge Gaps
-- **255 isolated node(s):** `clock`, `cycle`, `build`, `_schemaV1`, `path` (+250 more)
+- **255 isolated node(s):** `LoggedSet`, `id`, `name`, `date`, `startedAt` (+250 more)
   These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 333 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **5 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -173,7 +173,7 @@ _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `Project structure (lib/ layout)` connect `cycle_service.dart` to `rest_timer_controller.dart`, `SQLite Data Model`, `app_database.dart`, `workout_controller.dart`?**
   _High betweenness centrality (0.071) - this node is a cross-community bridge._
-- **What connects `clock`, `cycle`, `build` to the rest of the system?**
+- **What connects `LoggedSet`, `id`, `name` to the rest of the system?**
   _255 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `workout_screen.dart` be split into smaller, more focused modules?**
   _Cohesion score 0.04878048780487805 - nodes in this community are weakly interconnected._
