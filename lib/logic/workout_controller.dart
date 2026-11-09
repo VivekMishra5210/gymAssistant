@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 
+import '../core/notifications/rest_notifier.dart';
 import '../core/time/clock.dart';
 import '../data/models/plan_exercise.dart';
 import 'rest_timer_controller.dart';
@@ -64,7 +65,10 @@ class WorkoutController extends ChangeNotifier {
     required this.name,
     DateTime? startedAt,
     this.store = const NoStore(),
+    this.alerts = const NoAlerts(),
     this.vibrate = true,
+    this.sound = false,
+    this.keepScreenOn = false,
   }) : exercises = [for (final p in plan) ExerciseProgress(p)],
        startedAt = startedAt ?? _clock.now(),
        rest = RestTimerController(_clock) {
@@ -78,7 +82,11 @@ class WorkoutController extends ChangeNotifier {
   final DateTime startedAt;
   final RestTimerController rest;
   final WorkoutStore store;
-  final bool vibrate; // settings → rest-over popup
+  final RestAlerts alerts;
+  // Settings, read at session open.
+  final bool vibrate;
+  final bool sound;
+  final bool keepScreenOn;
   bool completed = false;
   bool _busy = false;
 
@@ -86,6 +94,13 @@ class WorkoutController extends ChangeNotifier {
     store
         .saveRest(rest.endsAt, rest.nextLabel)
         .catchError((Object e) => debugPrint('saving rest failed: $e'));
+    // Any rest change (start, ±15, skip, end, popup shown) re-arms or clears
+    // the notification. A past end time is never scheduled.
+    final end = rest.endsAt;
+    (end != null && end.isAfter(_clock.now())
+            ? alerts.schedule(end, 'Next: ${rest.nextLabel}')
+            : alerts.cancel())
+        .catchError((Object e) => debugPrint('rest notification failed: $e'));
     notifyListeners();
   }
 

@@ -14,17 +14,19 @@ Future<List<String>?> promptText(
   required String title,
   required List<String> labels,
   List<String> initial = const [],
+  bool number = false,
 }) => showDialog<List<String>>(
   context: context,
-  builder: (_) => _TextDialog(title, labels, initial),
+  builder: (_) => _TextDialog(title, labels, initial, number),
 );
 
 class _TextDialog extends StatefulWidget {
-  const _TextDialog(this.title, this.labels, this.initial);
+  const _TextDialog(this.title, this.labels, this.initial, this.number);
 
   final String title;
   final List<String> labels;
   final List<String> initial;
+  final bool number;
 
   @override
   State<_TextDialog> createState() => _TextDialogState();
@@ -63,6 +65,9 @@ class _TextDialogState extends State<_TextDialog> {
             controller: _ctrls[i],
             autofocus: i == 0,
             textCapitalization: TextCapitalization.words,
+            keyboardType: widget.number
+                ? const TextInputType.numberWithOptions(decimal: true)
+                : null,
             decoration: InputDecoration(labelText: widget.labels[i]),
             onChanged: (_) => setState(() {}),
             onSubmitted: (_) => _ok(),

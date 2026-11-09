@@ -504,3 +504,11 @@ Progress charts per exercise, personal records, weekly volume, CSV export/backup
 - End Workout with sets left → asks for a reason → confirms → saved as ended early → split advances.
 - Change the split mid-cycle → past Day Detail still shows the old names.
 - Crossing midnight during a workout → session date = start date.
+
+---
+
+## 15. Additions after v1 (requested 2026-11-10)
+
+- **Stats screen** (dashboard 📊): for this week (Mon–today), this month and all time: total gym time, workouts, avg per workout, avg per day (total ÷ calendar days, rest days included), sets, volume (Σ weight × reps). Only finished sessions count; duration = start → end.
+- **BMI screen** (dashboard ⚖): height saved once (`app_state.height_cm`, 50–272 cm); weigh-ins logged to `body_weight(id, date, weight_kg 20–400, logged_at)`. BMI = kg ÷ m², latest weigh-in, WHO categories (<18.5 / <25 / <30 / ≥30). DB version 2 adds these.
+- **Reset data** (Settings): choose *History only* (sessions, sets, rest days, weigh-ins) or *Everything* (also split, exercises, height, settings → onboarding). Second confirm; cancels any pending rest notification.

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'core/notifications/rest_notifier.dart';
 import 'core/time/clock.dart';
 import 'data/repositories/plan_repository.dart';
 import 'data/repositories/state_repository.dart';
@@ -14,12 +15,16 @@ class GymApp extends StatelessWidget {
     required this.cycle,
     required this.plan,
     required this.state,
+    required this.notifier,
+    this.openWorkout = false,
   });
 
   final Clock clock;
   final CycleService cycle;
   final PlanRepository plan;
   final StateRepository state;
+  final RestNotifier notifier;
+  final bool openWorkout; // launched by tapping the rest notification
 
   @override
   Widget build(BuildContext context) {
@@ -29,6 +34,7 @@ class GymApp extends StatelessWidget {
         Provider<CycleService>.value(value: cycle),
         Provider<PlanRepository>.value(value: plan),
         Provider<StateRepository>.value(value: state),
+        Provider<RestNotifier>.value(value: notifier),
       ],
       child: MaterialApp(
         title: 'Gym Assistant',
@@ -43,7 +49,7 @@ class GymApp extends StatelessWidget {
           scaffoldBackgroundColor: Colors.black,
           materialTapTargetSize: MaterialTapTargetSize.padded,
         ),
-        home: const DashboardScreen(),
+        home: DashboardScreen(openWorkout: openWorkout),
       ),
     );
   }

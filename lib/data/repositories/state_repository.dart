@@ -1,5 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 
+import '../../core/db/app_database.dart';
+
 /// Cycle pointer (SPEC §6): 1-based position + the date it applies from.
 typedef Pointer = ({int position, String since});
 
@@ -34,6 +36,23 @@ class StateRepository {
     'pointer_since': p.since,
   }, where: 'id = 1');
 
+  /// Switch splits: park the old split's position in its row, then make
+  /// [splitId] active with pointer [p]. One transaction so they can't diverge.
+  Future<void> switchSplit(int oldId, int oldPosition, int splitId, Pointer p) =>
+      _db.transaction((txn) async {
+        await txn.update(
+          'split',
+          {'pointer_position': oldPosition},
+          where: 'id = ?',
+          whereArgs: [oldId],
+        );
+        await txn.update('app_state', {
+          'active_split_id': splitId,
+          'pointer_position': p.position,
+          'pointer_since': p.since,
+        }, where: 'id = 1');
+      });
+
   /// Rest-day catch-up: log the passed rest days and move the pointer together.
   Future<void> applyCatchUp(Pointer p, List<String> restDates) =>
       _db.transaction((txn) async {
@@ -53,6 +72,35 @@ class StateRepository {
   };
 
   Future<int> graceDays() async => (await _row())['streak_grace_days'] as int;
+
+  // ===== BMI =====
+
+  Future<double?> heightCm() async =>
+      ((await _row())['height_cm'] as num?)?.toDouble();
+
+  Future<void> setHeightCm(double cm) =>
+      _db.update('app_state', {'height_cm': cm}, where: 'id = 1');
+
+  /// Newest first.
+  Future<List<({int id, String date, double kg})>> weights() async => [
+    for (final r in await _db.query('body_weight', orderBy: 'logged_at DESC'))
+      (
+        id: r['id'] as int,
+        date: r['date'] as String,
+        kg: (r['weight_kg'] as num).toDouble(),
+      ),
+  ];
+
+  Future<void> addWeight(String date, double kg, DateTime at) => _db.insert(
+    'body_weight',
+    {'date': date, 'weight_kg': kg, 'logged_at': at.millisecondsSinceEpoch},
+  );
+
+  Future<void> deleteWeight(int id) =>
+      _db.delete('body_weight', where: 'id = ?', whereArgs: [id]);
+
+  Future<void> reset({required bool everything, required String today}) =>
+      resetData(_db, everything: everything, today: today);
 
   Future<Settings> settings() async {
     final r = await _row();

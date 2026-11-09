@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/notifications/rest_notifier.dart';
+import '../../core/time/clock.dart';
+import '../../core/time/dates.dart';
 import '../../data/repositories/state_repository.dart';
 import '../widgets/common.dart';
 import 'exercises_screen.dart';
@@ -30,6 +33,65 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _save(Settings s) {
     setState(() => _s = s);
     _state.saveSettings(s);
+  }
+
+  /// Wipe test data: pick what, then confirm once more. Can't be undone.
+  Future<void> _reset() async {
+    final state = _state;
+    final notifier = context.read<RestNotifier>();
+    final today = dateKey(context.read<Clock>().now());
+    final everything = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Reset data'),
+        content: const Text(
+          'History only: deletes workouts, sets, rest days and weigh-ins. '
+          'Keeps your split, exercises and settings.\n\n'
+          'Everything: also deletes your split, exercises, height and '
+          'settings, like a fresh install.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: const Text('History only'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+            onPressed: () => Navigator.pop(c, true),
+            child: const Text('Everything'),
+          ),
+        ],
+      ),
+    );
+    if (everything == null || !mounted) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text(everything ? 'Delete everything?' : 'Delete all history?'),
+        content: const Text("This can't be undone."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(c, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await notifier.cancel().catchError(
+      (Object _) {},
+    ); // drop a pending rest alert
+    await state.reset(everything: everything, today: today);
+    if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
   }
 
   void _push(Widget screen) =>
@@ -125,6 +187,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ? () => _save(_rest(s, s.defaultRest + 15))
                         : null,
                   ),
+                ),
+                const Divider(),
+                ListTile(
+                  minTileHeight: 56,
+                  leading: const Icon(
+                    Icons.delete_forever,
+                    color: Colors.redAccent,
+                  ),
+                  title: const Text(
+                    'Reset data',
+                    style: TextStyle(color: Colors.redAccent),
+                  ),
+                  subtitle: const Text(
+                    'Start over: history only or everything',
+                  ),
+                  onTap: _reset,
                 ),
               ],
             ),

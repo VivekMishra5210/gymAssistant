@@ -4,12 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
 
+import '../../core/notifications/rest_notifier.dart';
 import '../../core/time/clock.dart';
 import '../../core/time/dates.dart';
 import '../../logic/cycle_service.dart';
+import '../bmi/bmi_screen.dart';
 import '../day_detail/day_detail_screen.dart';
 import '../onboarding/onboarding_view.dart';
 import '../settings/settings_screen.dart';
+import '../stats/stats_screen.dart';
 import '../widgets/common.dart';
 import '../workout/workout_screen.dart';
 
@@ -20,7 +23,10 @@ typedef _Data = (TodayInfo, History)?; // null → no split yet (onboarding)
 
 /// SPEC §5.2: Today card, streak row, calendar.
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+  const DashboardScreen({super.key, this.openWorkout = false});
+
+  /// Launched from the rest notification → go straight to the workout.
+  final bool openWorkout;
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -31,6 +37,8 @@ class _DashboardScreenState extends State<DashboardScreen>
   late Future<_Data> _data;
   late DateTime _focused;
   Timer? _midnight;
+  bool _inWorkout = false;
+  late final RestNotifier _notifier = context.read<RestNotifier>();
 
   CycleService get _cycle => context.read<CycleService>();
   Clock get _clock => context.read<Clock>();
@@ -41,11 +49,23 @@ class _DashboardScreenState extends State<DashboardScreen>
     WidgetsBinding.instance.addObserver(this);
     _focused = _clock.now();
     _data = _load();
+    _notifier.taps.addListener(_openRunning);
+    if (widget.openWorkout) _openRunning();
+  }
+
+  /// Notification tapped: open the running workout unless it's already open.
+  /// Its screen shows the rest-over popup itself.
+  Future<void> _openRunning() async {
+    if (_inWorkout) return;
+    _reload();
+    final id = (await _data)?.$1.sessionId;
+    if (id != null && mounted && !_inWorkout) await _go(() async => id);
   }
 
   @override
   void dispose() {
     _midnight?.cancel();
+    _notifier.taps.removeListener(_openRunning);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -86,7 +106,12 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   Future<void> _go(Future<int> Function() sessionId) async {
+    _inWorkout = true;
     try {
+      // SPEC §7: ask at Start Workout; the OS only prompts the first time.
+      await _notifier.requestPermissions().catchError(
+        (Object e) => debugPrint('notification permission failed: $e'),
+      );
       final w = await _cycle.open(await sessionId());
       if (!mounted) return w.dispose();
       await Navigator.of(context).push(
@@ -102,6 +127,8 @@ class _DashboardScreenState extends State<DashboardScreen>
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(e.message)));
       }
+    } finally {
+      _inWorkout = false;
     }
     _reload();
   }
@@ -112,6 +139,19 @@ class _DashboardScreenState extends State<DashboardScreen>
       appBar: AppBar(
         title: const Text('Gym Assistant'),
         actions: [
+          IconButton(
+            tooltip: 'Stats',
+            icon: const Icon(Icons.bar_chart),
+            onPressed: () => Navigator.of(context)
+                .push(MaterialPageRoute(builder: (_) => const StatsScreen())),
+          ),
+          IconButton(
+            tooltip: 'BMI',
+            icon: const Icon(Icons.monitor_weight),
+            onPressed: () =>
+                Navigator.of(context)
+                    .push(MaterialPageRoute(builder: (_) => const BmiScreen())),
+          ),
           IconButton(
             tooltip: 'Settings',
             icon: const Icon(Icons.settings),

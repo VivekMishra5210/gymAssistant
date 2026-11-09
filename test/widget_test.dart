@@ -106,4 +106,31 @@ void main() {
     clock.advance(const Duration(seconds: 90));
     expect(clock.now(), DateTime(2026, 1, 1, 10, 1, 30));
   });
+
+  testWidgets('rest ending in the background waits for the app to return', (
+    tester,
+  ) async {
+    final clock = FakeClock(DateTime(2026, 1, 1, 10));
+    final w = await openScreen(tester, clock);
+    await tester.tap(find.byIcon(Icons.add).at(0));
+    await tester.tap(find.byIcon(Icons.add).at(1));
+    await tester.pump();
+    await tester.tap(find.byIcon(Icons.check).first);
+    await tester.pump();
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    clock.advance(const Duration(minutes: 3));
+    await tester.pump(const Duration(seconds: 1));
+    expect(w.rest.isResting, isTrue); // notification stays; no hidden popup
+    expect(find.text('Rest over 💪'), findsNothing);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    expect(find.text('Rest over 💪'), findsOneWidget);
+    expect(w.rest.isResting, isFalse);
+
+    await tester.tap(find.text('Got it'));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(const SizedBox());
+  });
 }

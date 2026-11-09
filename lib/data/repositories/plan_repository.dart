@@ -9,13 +9,18 @@ typedef PlannedExercise = ({int id, int exerciseId, PlanExercise plan});
 typedef ExerciseRow = ({int id, String name, String? muscleGroup});
 
 /// The plan: split entries, their exercises, and the exercise list.
+const _activeId = '(SELECT active_split_id FROM app_state WHERE id = 1)';
+
 class PlanRepository {
   PlanRepository(this._db);
 
   final Database _db;
 
-  Future<List<SplitEntry>> entries() async => (await _db.query(
+  /// Days of [splitId], or of the active split when null.
+  Future<List<SplitEntry>> entries({int? splitId}) async => (await _db.query(
     'split_entry',
+    where: splitId == null ? 'split_id = $_activeId' : 'split_id = ?',
+    whereArgs: splitId == null ? null : [splitId],
     orderBy: 'position',
   )).map(SplitEntry.fromRow).toList();
 
@@ -41,24 +46,76 @@ class PlanRepository {
     ];
   }
 
+  // ===== Splits (college, exams, home…) =====
+
+  Future<int> activeSplitId() async => ((await _db.rawQuery(
+    'SELECT $_activeId AS id',
+  )).single['id'] as int);
+
+  /// Every split with its number of days, oldest first.
+  Future<List<({int id, String name, int days})>> splits() async => [
+    for (final r in await _db.rawQuery('''
+      SELECT s.id, s.name, COUNT(e.id) AS days
+      FROM split s LEFT JOIN split_entry e ON e.split_id = s.id
+      GROUP BY s.id ORDER BY s.id'''))
+      (id: r['id'] as int, name: r['name'] as String, days: r['days'] as int),
+  ];
+
+  Future<String> splitName(int id) async => (await _db.query(
+    'split',
+    where: 'id = ?',
+    whereArgs: [id],
+  )).single['name'] as String;
+
+  Future<int> addSplit(String name) => _db.insert('split', {'name': name});
+
+  Future<void> renameSplit(int id, String name) =>
+      _db.update('split', {'name': name}, where: 'id = ?', whereArgs: [id]);
+
+  /// Its days and their exercises cascade; past sessions are untouched.
+  Future<void> deleteSplit(int id) =>
+      _db.delete('split', where: 'id = ?', whereArgs: [id]);
+
+  /// Saved cycle position of a split that isn't active.
+  Future<int> splitPointer(int id) async => (await _db.query(
+    'split',
+    where: 'id = ?',
+    whereArgs: [id],
+  )).single['pointer_position'] as int;
+
+  Future<void> setSplitPointer(int id, int position) => _db.update(
+    'split',
+    {'pointer_position': position},
+    where: 'id = ?',
+    whereArgs: [id],
+  );
+
   // ===== Split entries =====
 
-  /// Onboarding: replace the (workout-less) split with [entries].
-  Future<void> createSplit(List<(EntryType, String)> entries) =>
-      _db.transaction((txn) async {
-        await txn.delete('split_entry');
-        for (var i = 0; i < entries.length; i++) {
-          await txn.insert('split_entry', {
-            'position': i + 1,
-            'type': entries[i].$1.name,
-            'name': entries[i].$2,
-          });
-        }
-      });
+  /// Onboarding: replace the active (workout-less) split's days with [entries].
+  Future<void> createSplit(List<(EntryType, String)> entries) async {
+    final splitId = await activeSplitId();
+    await _db.transaction((txn) async {
+      await txn.delete(
+        'split_entry',
+        where: 'split_id = ?',
+        whereArgs: [splitId],
+      );
+      for (var i = 0; i < entries.length; i++) {
+        await txn.insert('split_entry', {
+          'split_id': splitId,
+          'position': i + 1,
+          'type': entries[i].$1.name,
+          'name': entries[i].$2,
+        });
+      }
+    });
+  }
 
-  Future<void> addEntry(EntryType type, String name) async {
-    final count = (await entries()).length;
+  Future<void> addEntry(int splitId, EntryType type, String name) async {
+    final count = (await entries(splitId: splitId)).length;
     await _db.insert('split_entry', {
+      'split_id': splitId,
       'position': count + 1,
       'type': type.name,
       'name': name,
@@ -74,9 +131,19 @@ class PlanRepository {
 
   /// Its plan_exercise rows cascade; past sessions keep their copied names.
   Future<void> deleteEntry(int id) => _db.transaction((txn) async {
+    final splitId = (await txn.query(
+      'split_entry',
+      where: 'id = ?',
+      whereArgs: [id],
+    )).single['split_id'];
     await txn.delete('split_entry', where: 'id = ?', whereArgs: [id]);
     await _renumber(txn, 'split_entry', [
-      for (final r in await txn.query('split_entry', orderBy: 'position'))
+      for (final r in await txn.query(
+        'split_entry',
+        where: 'split_id = ?',
+        whereArgs: [splitId],
+        orderBy: 'position',
+      ))
         r['id'] as int,
     ]);
   });

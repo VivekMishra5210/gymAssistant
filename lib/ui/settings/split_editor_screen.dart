@@ -11,7 +11,11 @@ const _maxEntries = 14; // SPEC §4
 
 /// SPEC §5.7 Split Editor: add / rename / delete / reorder, set next up.
 class SplitEditorScreen extends StatefulWidget {
-  const SplitEditorScreen({super.key});
+  const SplitEditorScreen({super.key, this.splitId, this.title = 'Split'});
+
+  /// Null = the split being followed (onboarding).
+  final int? splitId;
+  final String title;
 
   @override
   State<SplitEditorScreen> createState() => _SplitEditorScreenState();
@@ -20,6 +24,8 @@ class SplitEditorScreen extends StatefulWidget {
 class _SplitEditorScreenState extends State<SplitEditorScreen> {
   List<SplitEntry>? _entries;
   int _nextUp = 1;
+  late int _splitId;
+  bool _active = true;
 
   CycleService get _cycle => context.read<CycleService>();
 
@@ -30,18 +36,24 @@ class _SplitEditorScreenState extends State<SplitEditorScreen> {
   }
 
   Future<void> _load() async {
-    final entries = await context.read<PlanRepository>().entries();
-    final p = await _cycle.pointer();
+    final cycle = _cycle;
+    final plan = context.read<PlanRepository>();
+    final activeId = await cycle.activeSplitId();
+    final id = widget.splitId ?? activeId;
+    final entries = await plan.entries(splitId: id);
+    final pos = await cycle.position(id);
     if (mounted) {
       setState(() {
+        _splitId = id;
+        _active = id == activeId;
         _entries = entries;
-        _nextUp = clampPosition(p.position, entries.length);
+        _nextUp = clampPosition(pos, entries.length);
       });
     }
   }
 
   Future<void> _edit(Future<void> Function(PlanRepository) change) async {
-    await _cycle.editSplit(change);
+    await _cycle.editSplit(_splitId, change);
     await _load();
   }
 
@@ -51,7 +63,7 @@ class _SplitEditorScreenState extends State<SplitEditorScreen> {
       title: 'New workout',
       labels: const ['Name (e.g. Back + Biceps)'],
     );
-    if (r != null) await _edit((p) => p.addEntry(EntryType.workout, r[0]));
+    if (r != null) await _edit((p) => p.addEntry(_splitId, EntryType.workout, r[0]));
   }
 
   Future<void> _rename(SplitEntry e) async {
@@ -98,7 +110,7 @@ class _SplitEditorScreenState extends State<SplitEditorScreen> {
   }
 
   Future<void> _setNextUp(SplitEntry e) async {
-    await _cycle.setNextUp(e.position);
+    await _cycle.setNextUp(_splitId, e.position);
     await _load();
   }
 
@@ -110,9 +122,9 @@ class _SplitEditorScreenState extends State<SplitEditorScreen> {
   @override
   Widget build(BuildContext context) {
     final entries = _entries;
-    final full = entries != null && entries.length >= _maxEntries;
+    final full = entries == null || entries.length >= _maxEntries; // also blocks taps before load
     return Scaffold(
-      appBar: AppBar(title: const Text('Split')),
+      appBar: AppBar(title: Text(widget.title)),
       body: entries == null
           ? const Center(child: CircularProgressIndicator())
           : entries.isEmpty
@@ -149,7 +161,7 @@ class _SplitEditorScreenState extends State<SplitEditorScreen> {
                   ),
                   onPressed: full
                       ? null
-                      : () => _edit((p) => p.addEntry(EntryType.rest, 'Rest')),
+                      : () => _edit((p) => p.addEntry(_splitId, EntryType.rest, 'Rest')),
                   icon: const Icon(Icons.bedtime),
                   label: const Text('Add Rest'),
                 ),
@@ -169,7 +181,10 @@ class _SplitEditorScreenState extends State<SplitEditorScreen> {
       leading: Icon(e.isRest ? Icons.bedtime : Icons.fitness_center),
       title: Text('${e.position}. ${e.name}'),
       subtitle: next
-          ? const Text('Next up', style: TextStyle(color: Colors.greenAccent))
+          ? Text(
+              _active ? 'Next up' : 'Resumes here',
+              style: const TextStyle(color: Colors.greenAccent),
+            )
           : null,
       onTap: e.isRest ? null : () => _open(e),
       trailing: Row(

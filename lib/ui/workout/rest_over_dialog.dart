@@ -1,3 +1,4 @@
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:vibration/vibration.dart';
 
@@ -6,7 +7,9 @@ Future<void> showRestOver(
   BuildContext context,
   String nextText, {
   bool vibrate = true,
+  bool sound = false,
 }) async {
+  if (sound) _player.play(AssetSource('sounds/rest_done.wav')).ignore();
   // 0.8 s on, 0.4 s off, looping from index 0 until cancelled.
   if (vibrate) Vibration.vibrate(pattern: [0, 800, 400], repeat: 0).ignore();
   try {
@@ -15,6 +18,12 @@ Future<void> showRestOver(
     Vibration.cancel().ignore();
   }
 }
+
+/// One app-lifetime player. Ducks Spotify etc. instead of stopping it.
+final _player = AudioPlayer()
+  ..setAudioContext(
+    AudioContextConfig(focus: AudioContextConfigFocus.duckOthers).build(),
+  ).ignore();
 
 Future<void> _show(BuildContext context, String nextText) {
   return showDialog<void>(

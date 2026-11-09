@@ -1,3 +1,4 @@
+import '../core/notifications/rest_notifier.dart';
 import '../core/time/clock.dart';
 import '../core/time/dates.dart';
 import '../data/models/plan_exercise.dart';
@@ -5,6 +6,7 @@ import '../data/models/split_entry.dart';
 import '../data/repositories/plan_repository.dart';
 import '../data/repositories/session_repository.dart';
 import '../data/repositories/state_repository.dart';
+import 'stats.dart';
 import 'streak_calculator.dart';
 import 'workout_controller.dart';
 
@@ -77,6 +79,7 @@ TodayState todayState({
 
 class TodayInfo {
   TodayInfo({
+    required this.splitName,
     required this.state,
     required this.current,
     required this.nextWorkout,
@@ -86,6 +89,7 @@ class TodayInfo {
     required this.doneDuration,
   });
 
+  final String splitName; // the split being followed
   final TodayState state;
   final SplitEntry current; // entry at the pointer
   final SplitEntry nextWorkout; // first workout entry from the pointer on
@@ -110,7 +114,15 @@ class History {
 }
 
 class CycleService {
-  CycleService(this._clock, this._plan, this._state, this._sessions);
+  CycleService(
+    this._clock,
+    this._plan,
+    this._state,
+    this._sessions, {
+    this.alerts = const NoAlerts(),
+  });
+
+  final RestAlerts alerts;
 
   final Clock _clock;
   final PlanRepository _plan;
@@ -129,25 +141,55 @@ class CycleService {
     await _state.setPointer((position: 1, since: _today));
   }
 
-  Future<Pointer> pointer() => _state.pointer();
+  Future<int> activeSplitId() => _plan.activeSplitId();
+
+  /// Next-up position of [splitId]: live pointer if active, else its saved one.
+  Future<int> position(int splitId) async =>
+      splitId == await _plan.activeSplitId()
+      ? (await _state.pointer()).position
+      : await _plan.splitPointer(splitId);
+
+  Future<void> _setPosition(int splitId, int pos, {required bool fromToday}) async {
+    if (splitId != await _plan.activeSplitId()) {
+      return _plan.setSplitPointer(splitId, pos);
+    }
+    final p = await _state.pointer();
+    await _state.setPointer((position: pos, since: fromToday ? _today : p.since));
+  }
 
   /// Run a split edit (add/delete/reorder), keeping the pointer on its entry.
   Future<void> editSplit(
+    int splitId,
     Future<void> Function(PlanRepository plan) change,
   ) async {
-    final oldIds = [for (final e in await _plan.entries()) e.id];
-    final p = await _state.pointer();
+    final oldIds = [for (final e in await _plan.entries(splitId: splitId)) e.id];
+    final before = await position(splitId);
     await change(_plan);
-    final newIds = [for (final e in await _plan.entries()) e.id];
-    final pos = keepPointer(oldIds, p.position, newIds);
-    if (pos != p.position) {
-      await _state.setPointer((position: pos, since: p.since));
-    }
+    final newIds = [for (final e in await _plan.entries(splitId: splitId)) e.id];
+    final pos = keepPointer(oldIds, before, newIds);
+    if (pos != before) await _setPosition(splitId, pos, fromToday: false);
   }
 
   /// "Set next up": that entry applies from today.
-  Future<void> setNextUp(int position) =>
-      _state.setPointer((position: position, since: _today));
+  Future<void> setNextUp(int splitId, int position) =>
+      _setPosition(splitId, position, fromToday: true);
+
+  /// Follow another split. The old one keeps its place for when you return;
+  /// the new one resumes where it was left, from today (no rest days logged
+  /// for the time away). Not allowed mid-workout.
+  Future<void> followSplit(int splitId) async {
+    final oldId = await _plan.activeSplitId();
+    if (oldId == splitId) return;
+    if (await _sessions.inProgressId() != null) {
+      throw StateError('Finish or end your workout first');
+    }
+    final count = (await _plan.entries(splitId: splitId)).length;
+    final saved = await _plan.splitPointer(splitId);
+    await _state.switchSplit(oldId, (await _state.pointer()).position, splitId, (
+      position: count == 0 ? 1 : clampPosition(saved, count),
+      since: _today,
+    ));
+  }
 
   /// Run on app open/resume: rest catch-up, then what the Today card shows.
   Future<TodayInfo> refresh() async {
@@ -162,6 +204,7 @@ class CycleService {
     final inProgress = await _sessions.inProgressId();
     final done = await _sessions.finishedDurationOn(today);
     return TodayInfo(
+      splitName: await _plan.splitName(await _plan.activeSplitId()),
       state: todayState(
         inProgress: inProgress != null,
         doneToday: done != null,
@@ -195,6 +238,8 @@ class CycleService {
     );
   }
 
+  Future<List<SessionStat>> stats() => _sessions.stats();
+
   Future<List<DaySession>> day(String date) => _sessions.sessionsOn(date);
 
   /// Start Workout / Train anyway / Start next anyway. Returns the session id
@@ -221,13 +266,17 @@ class CycleService {
   /// Build the controller for a session: logged sets, pre-fill, saved rest.
   Future<WorkoutController> open(int sessionId) async {
     final s = await _sessions.load(sessionId);
+    final settings = await _state.settings();
     final w = WorkoutController(
       _clock,
       s.exercises,
       name: s.name,
       startedAt: s.startedAt,
       store: _DbStore(this, s),
-      vibrate: (await _state.settings()).vibration,
+      alerts: alerts,
+      vibrate: settings.vibration,
+      sound: settings.sound,
+      keepScreenOn: settings.keepScreenOn,
     );
     for (final l in s.logs) {
       w.load(l.ex, l.set, weight: l.weight, reps: l.reps, done: true);

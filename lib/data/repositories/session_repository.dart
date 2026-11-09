@@ -3,6 +3,7 @@ import 'package:sqflite/sqflite.dart';
 import '../../core/time/dates.dart';
 import '../models/plan_exercise.dart';
 import '../models/split_entry.dart';
+import '../../logic/stats.dart';
 import 'plan_repository.dart';
 import 'state_repository.dart';
 
@@ -62,6 +63,25 @@ class SessionRepository {
 
   /// date → status of finished sessions. MIN() makes 'completed' win over
   /// 'ended_early' when a day has both.
+  /// Every finished session with its duration, volume and set count.
+  Future<List<SessionStat>> stats() async => [
+    for (final r in await _db.rawQuery('''
+      SELECT s.date, s.ended_at - s.started_at AS ms,
+        COALESCE(SUM(sl.weight_kg * sl.reps), 0) AS volume,
+        COUNT(sl.id) AS sets
+      FROM workout_session s
+      LEFT JOIN session_exercise se ON se.session_id = s.id
+      LEFT JOIN set_log sl ON sl.session_exercise_id = se.id
+      WHERE s.status != 'in_progress' AND s.ended_at IS NOT NULL
+      GROUP BY s.id'''))
+      (
+        date: r['date'] as String,
+        duration: Duration(milliseconds: r['ms'] as int),
+        volume: (r['volume'] as num).toDouble(),
+        sets: r['sets'] as int,
+      ),
+  ];
+
   Future<Map<String, String>> finishedDays() async {
     final rows = await _db.rawQuery('''
       SELECT date, MIN(status) AS status FROM workout_session

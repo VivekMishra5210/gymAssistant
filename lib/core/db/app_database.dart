@@ -66,23 +66,91 @@ const _schemaV1 = [
   "CREATE UNIQUE INDEX idx_one_in_progress ON workout_session(status) WHERE status = 'in_progress'",
 ];
 
+/// v2: BMI — height in app_state, body weight log.
+const _schemaV2 = [
+  'ALTER TABLE app_state ADD COLUMN height_cm REAL',
+  '''CREATE TABLE body_weight (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT NOT NULL,
+    weight_kg REAL NOT NULL CHECK (weight_kg > 0),
+    logged_at INTEGER NOT NULL)''',
+];
+
+/// v3: several named splits (college / exams / home); one is active.
+/// Each split remembers its own cycle position while it isn't active.
+/// FKs are on during upgrades, so the added FK column must default to NULL.
+const _schemaV3 = [
+  '''CREATE TABLE split (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    pointer_position INTEGER NOT NULL DEFAULT 1)''',
+  "INSERT INTO split (id, name) VALUES (1, 'My split')",
+  'ALTER TABLE split_entry ADD COLUMN split_id INTEGER REFERENCES split(id) ON DELETE CASCADE',
+  'UPDATE split_entry SET split_id = 1',
+  'ALTER TABLE app_state ADD COLUMN active_split_id INTEGER',
+  'UPDATE app_state SET active_split_id = 1',
+];
+
 Future<Database> openAppDatabase(Clock clock) async {
   final path = p.join(await getDatabasesPath(), 'gym_assistant.db');
   return openDatabase(
     path,
-    version: 1,
+    version: 3,
     onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
     onCreate: (db, _) async {
-      for (final sql in _schemaV1) {
+      for (final sql in [..._schemaV1, ..._schemaV2, ..._schemaV3]) {
         await db.execute(sql);
       }
       await _seed(db, dateKey(clock.now()));
     },
     onUpgrade: (db, from, to) async {
-      // Schema changes go here as `if (from < 2) { ... }` steps.
+      if (from < 2) {
+        for (final sql in _schemaV2) {
+          await db.execute(sql);
+        }
+      }
+      if (from < 3) {
+        for (final sql in _schemaV3) {
+          await db.execute(sql);
+        }
+      }
     },
   );
 }
 
-Future<void> _seed(Database db, String today) =>
-    db.insert('app_state', {'id': 1, 'pointer_since': today});
+Future<void> _seed(DatabaseExecutor db, String today) async {
+  await db.insert('split', {
+    'id': 1,
+    'name': 'My split',
+  }, conflictAlgorithm: ConflictAlgorithm.ignore);
+  await db.insert('app_state', {
+    'id': 1,
+    'pointer_since': today,
+    'active_split_id': 1,
+  });
+}
+
+/// Settings → Reset. History: sessions, sets, rest days, weigh-ins.
+/// Everything: also split, exercises, height and settings (like a fresh install).
+Future<void> resetData(
+  Database db, {
+  required bool everything,
+  required String today,
+}) => db.transaction((txn) async {
+  await txn.delete('workout_session'); // cascades session_exercise, set_log
+  await txn.delete('rest_day_log');
+  await txn.delete('body_weight');
+  if (everything) {
+    await txn.delete('plan_exercise');
+    await txn.delete('split_entry');
+    await txn.delete('split');
+    await txn.delete('exercise');
+    await txn.delete('app_state');
+    await _seed(txn, today);
+  } else {
+    await txn.update('app_state', {
+      'rest_ends_at': null,
+      'rest_next_label': null,
+    }, where: 'id = 1');
+  }
+});

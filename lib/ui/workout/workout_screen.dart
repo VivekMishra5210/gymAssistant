@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../logic/workout_controller.dart';
 import 'rest_over_dialog.dart';
@@ -28,6 +29,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
     with WidgetsBindingObserver {
   Timer? _ticker;
   bool _popupOpen = false;
+  bool _keepAwake = false;
   final Set<int> _opened = {};
 
   WorkoutController get _w => context.read<WorkoutController>();
@@ -38,11 +40,14 @@ class _WorkoutScreenState extends State<WorkoutScreen>
     WidgetsBinding.instance.addObserver(this);
     // Only redraws; remaining time always comes from the stored end time.
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _onTick());
+    _keepAwake = _w.keepScreenOn;
+    if (_keepAwake) WakelockPlus.enable().ignore();
   }
 
   @override
   void dispose() {
     _ticker?.cancel();
+    if (_keepAwake) WakelockPlus.disable().ignore();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -54,12 +59,17 @@ class _WorkoutScreenState extends State<WorkoutScreen>
 
   void _onTick() {
     if (!mounted) return;
-    if (_w.rest.takeFinished() && !_popupOpen) {
+    // In the background the notification handles rest end (SPEC §5.4);
+    // taking it here would cancel that notification and buzz unseen.
+    final visible =
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+    if (visible && !_popupOpen && _w.rest.takeFinished()) {
       _popupOpen = true;
       showRestOver(
         context,
         _w.restOverText,
         vibrate: _w.vibrate,
+        sound: _w.sound,
       ).whenComplete(() => _popupOpen = false);
     }
     setState(() {});

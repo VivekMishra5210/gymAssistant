@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gym_assistant/core/notifications/rest_notifier.dart';
 import 'package:gym_assistant/core/time/clock.dart';
 import 'package:gym_assistant/data/models/plan_exercise.dart';
 import 'package:gym_assistant/logic/rest_timer_controller.dart';
@@ -30,6 +31,17 @@ class RecordingStore implements WorkoutStore {
   @override
   Future<void> finish(SessionEnd end, DateTime at, String? reason) async =>
       finished.add((end, reason));
+}
+
+/// Records schedule/cancel calls as "HH:MM:SS body" or "cancel".
+class RecordingAlerts implements RestAlerts {
+  final calls = <String>[];
+
+  @override
+  Future<void> schedule(DateTime at, String body) async =>
+      calls.add('${at.toIso8601String().substring(11, 19)} $body');
+  @override
+  Future<void> cancel() async => calls.add('cancel');
 }
 
 void main() {
@@ -209,4 +221,31 @@ void main() {
       expect(w.entry(0, 0).reps, 0);
     });
   });
+
+  test(
+    'rest notification: scheduled at the end time, moved, cancelled',
+    () async {
+      final clock = FakeClock(DateTime(2026, 1, 1, 10));
+      final alerts = RecordingAlerts();
+      final w = WorkoutController(clock, plan, name: 'Pull', alerts: alerts);
+      w.load(0, 0, weight: 50, reps: 10);
+
+      await w.tick(0, 0);
+      expect(alerts.calls.last, '10:02:00 Next: Set 2 · Lat Pulldown');
+
+      w.rest.adjust(const Duration(seconds: 15));
+      expect(alerts.calls.last, '10:02:15 Next: Set 2 · Lat Pulldown');
+
+      w.rest.skip();
+      expect(alerts.calls.last, 'cancel');
+
+      // Rest ran out while away: no past-time schedule, popup clears it once.
+      await w.tick(0, 1);
+      clock.advance(const Duration(minutes: 5));
+      w.rest.restore(w.rest.endsAt!, w.rest.nextLabel);
+      expect(alerts.calls.last, 'cancel');
+      expect(w.rest.takeFinished(), isTrue);
+      expect(alerts.calls.last, 'cancel');
+    },
+  );
 }
