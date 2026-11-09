@@ -25,13 +25,17 @@ Future<void> _show(BuildContext context, String nextText) {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('Rest over 💪',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold)),
+              const Text(
+                'Rest over 💪',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 16),
-              Text(nextText,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 22)),
+              Text(
+                nextText,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 22),
+              ),
               const SizedBox(height: 48),
               SizedBox(
                 height: 72,

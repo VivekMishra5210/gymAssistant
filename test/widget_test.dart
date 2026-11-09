@@ -1,24 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gym_assistant/app.dart';
 import 'package:gym_assistant/core/time/clock.dart';
+import 'package:gym_assistant/data/models/plan_exercise.dart';
+import 'package:gym_assistant/logic/workout_controller.dart';
+import 'package:gym_assistant/ui/workout/workout_screen.dart';
+import 'package:provider/provider.dart';
+
+const pull = [
+  PlanExercise('Lat Pulldown', 4, 120),
+  PlanExercise('Seated Row', 4, 120),
+  PlanExercise('Barbell Curl', 4, 90),
+  PlanExercise('Hammer Curl', 4, 90),
+];
+
+Future<WorkoutController> openScreen(
+  WidgetTester tester,
+  FakeClock clock,
+) async {
+  tester.view.physicalSize = const Size(1080, 2400); // Redmi Note 13 5G
+  tester.view.devicePixelRatio = 2.75;
+  addTearDown(tester.view.reset);
+  final w = WorkoutController(clock, pull, name: 'Pull');
+  await tester.pumpWidget(
+    MaterialApp(
+      home: ChangeNotifierProvider.value(
+        value: w,
+        child: const WorkoutScreen(),
+      ),
+    ),
+  );
+  return w;
+}
 
 void main() {
-  testWidgets('app starts with title', (tester) async {
-    await tester.pumpWidget(const GymApp());
-    expect(find.text('Gym Assistant'), findsOneWidget);
-  });
-
-  testWidgets('workout screen fits a phone and ticking shows the rest panel',
-      (tester) async {
-    tester.view.physicalSize = const Size(1080, 2400); // Redmi Note 13 5G
-    tester.view.devicePixelRatio = 2.75;
-    addTearDown(tester.view.reset);
-
+  testWidgets('workout screen fits a phone and ticking shows the rest panel', (
+    tester,
+  ) async {
     final clock = FakeClock(DateTime(2026, 1, 1, 10));
-    await tester.pumpWidget(GymApp(clock: clock));
-    await tester.tap(find.textContaining('Start Workout'));
-    await tester.pumpAndSettle();
+    await openScreen(tester, clock);
     expect(find.text('Lat Pulldown'), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.add).at(0)); // weight +2.5
@@ -38,15 +57,10 @@ void main() {
     await tester.pumpWidget(const SizedBox()); // dispose screen + its ticker
   });
 
-  testWidgets('typing a weight in the dialog updates the set without errors',
-      (tester) async {
-    tester.view.physicalSize = const Size(1080, 2400);
-    tester.view.devicePixelRatio = 2.75;
-    addTearDown(tester.view.reset);
-
-    await tester.pumpWidget(GymApp(clock: FakeClock(DateTime(2026, 1, 1))));
-    await tester.tap(find.textContaining('Start Workout'));
-    await tester.pumpAndSettle();
+  testWidgets('typing a weight in the dialog updates the set without errors', (
+    tester,
+  ) async {
+    await openScreen(tester, FakeClock(DateTime(2026, 1, 1)));
 
     await tester.tap(find.text('– kg').first);
     await tester.pumpAndSettle();
@@ -56,6 +70,33 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.text('62.5 kg'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('End Workout needs a reason, then a second confirm', (
+    tester,
+  ) async {
+    final w = await openScreen(tester, FakeClock(DateTime(2026, 1, 1)));
+
+    await tester.tap(find.text('End Workout'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('You have 16 sets left. Why are you ending?'),
+      findsOneWidget,
+    );
+    final next = find.widgetWithText(FilledButton, 'Next');
+    expect(tester.widget<FilledButton>(next).onPressed, isNull);
+
+    await tester.tap(find.text('Gym crowded'));
+    await tester.pump();
+    await tester.tap(next);
+    await tester.pumpAndSettle();
+    expect(find.text("This can't be undone."), findsOneWidget);
+
+    await tester.tap(find.text('Keep going'));
+    await tester.pumpAndSettle();
+    expect(find.text('Lat Pulldown'), findsOneWidget);
+    expect(w.completed, isFalse);
     await tester.pumpWidget(const SizedBox());
   });
 

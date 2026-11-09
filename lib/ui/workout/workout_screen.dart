@@ -8,7 +8,8 @@ import '../../logic/workout_controller.dart';
 import 'rest_over_dialog.dart';
 
 String _mmss(Duration d) {
-  final secs = (d.inMilliseconds + 999) ~/ 1000; // round up: 0:01 until it's really over
+  final secs =
+      (d.inMilliseconds + 999) ~/ 1000; // round up: 0:01 until it's really over
   final h = secs ~/ 3600, m = (secs % 3600) ~/ 60, s = secs % 60;
   final ss = s.toString().padLeft(2, '0');
   return h > 0 ? '$h:${m.toString().padLeft(2, '0')}:$ss' : '$m:$ss';
@@ -55,14 +56,16 @@ class _WorkoutScreenState extends State<WorkoutScreen>
     if (!mounted) return;
     if (_w.rest.takeFinished() && !_popupOpen) {
       _popupOpen = true;
-      showRestOver(context, _w.restOverText)
-          .whenComplete(() => _popupOpen = false);
+      showRestOver(
+        context,
+        _w.restOverText,
+      ).whenComplete(() => _popupOpen = false);
     }
     setState(() {});
   }
 
   Future<void> _tick(int ex, int set) async {
-    _w.tick(ex, set);
+    await _w.tick(ex, set);
     if (_w.completed) await _finish();
   }
 
@@ -73,31 +76,44 @@ class _WorkoutScreenState extends State<WorkoutScreen>
       barrierDismissible: false,
       builder: (c) => AlertDialog(
         title: const Text('Workout complete 🎉'),
-        content: Text('Duration: ${_mmss(w.elapsed)}\n'
-            'Sets: ${w.setsDone}\n'
-            'Volume: ${w.volume.toStringAsFixed(0)} kg'),
+        content: Text(
+          'Duration: ${_mmss(w.elapsed)}\n'
+          'Sets: ${w.setsDone}\n'
+          'Volume: ${w.volume.toStringAsFixed(0)} kg',
+        ),
         actions: [
           FilledButton(
-              onPressed: () => Navigator.of(c).pop(), child: const Text('Done')),
+            onPressed: () => Navigator.of(c).pop(),
+            child: const Text('Done'),
+          ),
         ],
       ),
     );
     if (mounted) Navigator.of(context).pop();
   }
 
-  /// shortcut: simple confirm; reason chips + second confirm come with the DB in M2.
+  /// SPEC §5.5: reason (required) → second confirm → saved as ended early.
   Future<void> _confirmEnd() async {
     final w = _w;
-    if (w.setsLeft == 0) return _finish();
+    if (w.setsLeft == 0) {
+      await w.complete();
+      return _finish();
+    }
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (_) => _EndReasonDialog(setsLeft: w.setsLeft),
+    );
+    if (reason == null || !mounted) return;
     final ok = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
         title: const Text('End workout now?'),
-        content: Text('You have ${w.setsLeft} sets left.'),
+        content: const Text("This can't be undone."),
         actions: [
           TextButton(
-              onPressed: () => Navigator.of(c).pop(false),
-              child: const Text('Keep going')),
+            onPressed: () => Navigator.of(c).pop(false),
+            child: const Text('Keep going'),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.of(c).pop(true),
@@ -107,8 +123,8 @@ class _WorkoutScreenState extends State<WorkoutScreen>
       ),
     );
     if (ok == true && mounted) {
-      w.end();
-      Navigator.of(context).pop();
+      await w.end(reason);
+      if (mounted) Navigator.of(context).pop();
     }
   }
 
@@ -122,8 +138,8 @@ class _WorkoutScreenState extends State<WorkoutScreen>
         initial: current == null
             ? ''
             : weight
-                ? _kg(current as double)
-                : '$current',
+            ? _kg(current as double)
+            : '$current',
       ),
     );
     if (result == null || !mounted) return;
@@ -141,20 +157,26 @@ class _WorkoutScreenState extends State<WorkoutScreen>
     final action = await showModalBottomSheet<String>(
       context: context,
       builder: (c) => SafeArea(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          ListTile(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
               leading: const Icon(Icons.fitness_center),
               title: const Text('Edit weight'),
-              onTap: () => Navigator.of(c).pop('w')),
-          ListTile(
+              onTap: () => Navigator.of(c).pop('w'),
+            ),
+            ListTile(
               leading: const Icon(Icons.repeat),
               title: const Text('Edit reps'),
-              onTap: () => Navigator.of(c).pop('r')),
-          ListTile(
+              onTap: () => Navigator.of(c).pop('r'),
+            ),
+            ListTile(
               leading: const Icon(Icons.undo),
               title: const Text('Undo this set'),
-              onTap: () => Navigator.of(c).pop('u')),
-        ]),
+              onTap: () => Navigator.of(c).pop('u'),
+            ),
+          ],
+        ),
       ),
     );
     if (!mounted) return;
@@ -164,7 +186,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
       case 'r':
         await _editNumber(ex, set, weight: false);
       case 'u':
-        _w.undo(ex, set);
+        await _w.undo(ex, set);
     }
   }
 
@@ -172,49 +194,129 @@ class _WorkoutScreenState extends State<WorkoutScreen>
   Widget build(BuildContext context) {
     final w = context.watch<WorkoutController>();
     final active = w.active;
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _confirmEnd();
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    // Back just leaves the screen; the session stays in progress (Resume on the home screen).
+    return Scaffold(
+      appBar: AppBar(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Text(w.name),
-            Text(_mmss(w.elapsed),
-                style: const TextStyle(fontSize: 16, color: Colors.white70)),
-          ]),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: FilledButton(
-                style: FilledButton.styleFrom(
-                    backgroundColor: Colors.red, minimumSize: const Size(48, 48)),
-                onPressed: _confirmEnd,
-                child: const Text('End Workout'),
-              ),
+            Text(
+              _mmss(w.elapsed),
+              style: const TextStyle(fontSize: 16, color: Colors.white70),
             ),
           ],
         ),
-        body: ListView.builder(
-          padding: const EdgeInsets.all(8),
-          itemCount: w.exercises.length,
-          itemBuilder: (_, i) {
-            final open = i == active?.ex || _opened.contains(i);
-            return _ExerciseCard(
-              index: i,
-              open: open,
-              onToggle: () => setState(
-                  () => _opened.contains(i) ? _opened.remove(i) : _opened.add(i)),
-              onTick: _tick,
-              onEdit: _editNumber,
-              onDoneMenu: _doneSetMenu,
-            );
-          },
-        ),
-        // Not const: it must rebuild on every 1 s tick to redraw the countdown.
-        bottomNavigationBar: w.rest.isResting ? _RestPanel(w) : null,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.red,
+                minimumSize: const Size(48, 48),
+              ),
+              onPressed: _confirmEnd,
+              child: const Text('End Workout'),
+            ),
+          ),
+        ],
       ),
+      body: ListView.builder(
+        padding: const EdgeInsets.all(8),
+        itemCount: w.exercises.length,
+        itemBuilder: (_, i) {
+          final open = i == active?.ex || _opened.contains(i);
+          return _ExerciseCard(
+            index: i,
+            open: open,
+            onToggle: () => setState(
+              () => _opened.contains(i) ? _opened.remove(i) : _opened.add(i),
+            ),
+            onTick: _tick,
+            onEdit: _editNumber,
+            onDoneMenu: _doneSetMenu,
+          );
+        },
+      ),
+      // Not const: it must rebuild on every 1 s tick to redraw the countdown.
+      bottomNavigationBar: w.rest.isResting ? _RestPanel(w) : null,
+    );
+  }
+}
+
+const _endReasons = [
+  'Short on time',
+  'Tired / low energy',
+  'Pain / injury',
+  'Gym crowded',
+  'Other',
+];
+
+/// Step 1 of End Workout: pick a reason (required) + optional note.
+class _EndReasonDialog extends StatefulWidget {
+  const _EndReasonDialog({required this.setsLeft});
+
+  final int setsLeft;
+
+  @override
+  State<_EndReasonDialog> createState() => _EndReasonDialogState();
+}
+
+class _EndReasonDialogState extends State<_EndReasonDialog> {
+  final _note = TextEditingController();
+  String? _pick;
+
+  @override
+  void dispose() {
+    _note.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pick = _pick;
+    return AlertDialog(
+      title: Text('You have ${widget.setsLeft} sets left. Why are you ending?'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final r in _endReasons)
+                  ChoiceChip(
+                    label: Text(r),
+                    selected: _pick == r,
+                    onSelected: (_) => setState(() => _pick = r),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _note,
+              decoration: const InputDecoration(hintText: 'Note (optional)'),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Keep going'),
+        ),
+        FilledButton(
+          onPressed: pick == null
+              ? null
+              : () {
+                  final note = _note.text.trim();
+                  Navigator.of(context)
+                      .pop(note.isEmpty ? pick : '$pick · $note');
+                },
+          child: const Text('Next'),
+        ),
+      ],
     );
   }
 }
@@ -250,18 +352,21 @@ class _NumberDialogState extends State<_NumberDialog> {
         keyboardType: TextInputType.numberWithOptions(decimal: weight),
         inputFormatters: [
           FilteringTextInputFormatter.allow(
-              RegExp(weight ? r'[0-9.,]' : r'[0-9]')),
+            RegExp(weight ? r'[0-9.,]' : r'[0-9]'),
+          ),
         ],
         style: const TextStyle(fontSize: 28),
         onSubmitted: (v) => Navigator.of(context).pop(v),
       ),
       actions: [
         TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel')),
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
         FilledButton(
-            onPressed: () => Navigator.of(context).pop(_ctrl.text),
-            child: const Text('OK')),
+          onPressed: () => Navigator.of(context).pop(_ctrl.text),
+          child: const Text('OK'),
+        ),
       ],
     );
   }
@@ -290,26 +395,34 @@ class _ExerciseCard extends StatelessWidget {
     final e = w.exercises[index];
     final allDone = e.doneCount == e.sets.length;
     return Card(
-      child: Column(children: [
-        ListTile(
-          minTileHeight: 56,
-          title: Text(e.plan.name,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          trailing: Text('${e.doneCount}/${e.sets.length} sets',
-              style: TextStyle(
-                  fontSize: 16, color: allDone ? Colors.greenAccent : null)),
-          onTap: onToggle,
-        ),
-        if (open)
-          for (var s = 0; s < e.sets.length; s++)
-            _SetRow(
-              ex: index,
-              set: s,
-              onTick: onTick,
-              onEdit: onEdit,
-              onDoneMenu: onDoneMenu,
+      child: Column(
+        children: [
+          ListTile(
+            minTileHeight: 56,
+            title: Text(
+              e.plan.name,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
-      ]),
+            trailing: Text(
+              '${e.doneCount}/${e.sets.length} sets',
+              style: TextStyle(
+                fontSize: 16,
+                color: allDone ? Colors.greenAccent : null,
+              ),
+            ),
+            onTap: onToggle,
+          ),
+          if (open)
+            for (var s = 0; s < e.sets.length; s++)
+              _SetRow(
+                ex: index,
+                set: s,
+                onTick: onTick,
+                onEdit: onEdit,
+                onDoneMenu: onDoneMenu,
+              ),
+        ],
+      ),
     );
   }
 }
@@ -340,41 +453,58 @@ class _SetRow extends StatelessWidget {
       child: Container(
         color: isActive ? Colors.white10 : null,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        child: Row(children: [
-          SizedBox(
-            width: 52,
-            child: Text('Set ${set + 1}',
-                style: const TextStyle(fontSize: 16, color: Colors.white70)),
-          ),
-          Expanded(
-            child: Column(children: [
-              _Stepper(
-                text: s.weight == null ? '– kg' : '${_kg(s.weight!)} kg',
-                onMinus: editable ? () => w.bumpWeight(ex, set, -2.5) : null,
-                onPlus: editable ? () => w.bumpWeight(ex, set, 2.5) : null,
-                onTap: editable ? () => onEdit(ex, set, weight: true) : null,
+        child: Row(
+          children: [
+            SizedBox(
+              width: 52,
+              child: Text(
+                'Set ${set + 1}',
+                style: const TextStyle(fontSize: 16, color: Colors.white70),
               ),
-              _Stepper(
-                text: s.reps == null ? '– reps' : '${s.reps} reps',
-                onMinus: editable ? () => w.bumpReps(ex, set, -1) : null,
-                onPlus: editable ? () => w.bumpReps(ex, set, 1) : null,
-                onTap: editable ? () => onEdit(ex, set, weight: false) : null,
-              ),
-            ]),
-          ),
-          const SizedBox(width: 8),
-          SizedBox.square(
-            dimension: 64,
-            child: s.done
-                ? const Icon(Icons.check_circle,
-                    color: Colors.greenAccent, size: 48)
-                : IconButton.filled(
-                    iconSize: 36,
-                    onPressed: w.canTick(ex, set) ? () => onTick(ex, set) : null,
-                    icon: const Icon(Icons.check),
+            ),
+            Expanded(
+              child: Column(
+                children: [
+                  _Stepper(
+                    text: s.weight == null ? '– kg' : '${_kg(s.weight!)} kg',
+                    onMinus: editable
+                        ? () => w.bumpWeight(ex, set, -2.5)
+                        : null,
+                    onPlus: editable ? () => w.bumpWeight(ex, set, 2.5) : null,
+                    onTap: editable
+                        ? () => onEdit(ex, set, weight: true)
+                        : null,
                   ),
-          ),
-        ]),
+                  _Stepper(
+                    text: s.reps == null ? '– reps' : '${s.reps} reps',
+                    onMinus: editable ? () => w.bumpReps(ex, set, -1) : null,
+                    onPlus: editable ? () => w.bumpReps(ex, set, 1) : null,
+                    onTap: editable
+                        ? () => onEdit(ex, set, weight: false)
+                        : null,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            SizedBox.square(
+              dimension: 64,
+              child: s.done
+                  ? const Icon(
+                      Icons.check_circle,
+                      color: Colors.greenAccent,
+                      size: 48,
+                    )
+                  : IconButton.filled(
+                      iconSize: 36,
+                      onPressed: w.canTick(ex, set)
+                          ? () => onTick(ex, set)
+                          : null,
+                      icon: const Icon(Icons.check),
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -395,28 +525,37 @@ class _Stepper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(children: [
-      IconButton(
+    return Row(
+      children: [
+        IconButton(
           constraints: const BoxConstraints.tightFor(width: 48, height: 48),
           onPressed: onMinus,
-          icon: const Icon(Icons.remove)),
-      Expanded(
-        child: InkWell(
-          onTap: onTap,
-          child: SizedBox(
-            height: 48,
-            child: Center(
-                child: Text(text,
-                    style: const TextStyle(
-                        fontSize: 20, fontWeight: FontWeight.w600))),
+          icon: const Icon(Icons.remove),
+        ),
+        Expanded(
+          child: InkWell(
+            onTap: onTap,
+            child: SizedBox(
+              height: 48,
+              child: Center(
+                child: Text(
+                  text,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
-      ),
-      IconButton(
+        IconButton(
           constraints: const BoxConstraints.tightFor(width: 48, height: 48),
           onPressed: onPlus,
-          icon: const Icon(Icons.add)),
-    ]);
+          icon: const Icon(Icons.add),
+        ),
+      ],
+    );
   }
 }
 
@@ -433,45 +572,68 @@ class _RestPanel extends StatelessWidget {
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(12),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Row(children: [
-              SizedBox.square(
-                dimension: 110,
-                child: Stack(fit: StackFit.expand, children: [
-                  CircularProgressIndicator(
-                      value: rest.progress, strokeWidth: 8),
-                  Center(
-                      child: Text(_mmss(rest.remaining),
-                          style: const TextStyle(
-                              fontSize: 32, fontWeight: FontWeight.bold))),
-                ]),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text('Next: ${rest.nextLabel ?? ''}',
-                    style: const TextStyle(fontSize: 20)),
-              ),
-            ]),
-            const SizedBox(height: 12),
-            Row(children: [
-              for (final (label, action) in [
-                ('−15s', () => rest.adjust(const Duration(seconds: -15))),
-                ('+15s', () => rest.adjust(const Duration(seconds: 15))),
-                ('Skip rest', rest.skip),
-              ])
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: SizedBox(
-                      height: 56,
-                      child: FilledButton.tonal(
-                          onPressed: action,
-                          child: Text(label, style: const TextStyle(fontSize: 18))),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  SizedBox.square(
+                    dimension: 110,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        CircularProgressIndicator(
+                          value: rest.progress,
+                          strokeWidth: 8,
+                        ),
+                        Center(
+                          child: Text(
+                            _mmss(rest.remaining),
+                            style: const TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-            ]),
-          ]),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      'Next: ${rest.nextLabel ?? ''}',
+                      style: const TextStyle(fontSize: 20),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  for (final (label, action) in [
+                    ('−15s', () => rest.adjust(const Duration(seconds: -15))),
+                    ('+15s', () => rest.adjust(const Duration(seconds: 15))),
+                    ('Skip rest', rest.skip),
+                  ])
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: SizedBox(
+                          height: 56,
+                          child: FilledButton.tonal(
+                            onPressed: action,
+                            child: Text(
+                              label,
+                              style: const TextStyle(fontSize: 18),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

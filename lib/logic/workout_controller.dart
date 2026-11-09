@@ -6,14 +6,35 @@ import '../core/time/clock.dart';
 import '../data/models/plan_exercise.dart';
 import 'rest_timer_controller.dart';
 
-/// shortcut: hardcoded Phase 1 workout, replaced by the current split entry in M2.
-const hardcodedWorkoutName = 'Pull Day';
-const hardcodedWorkout = [
-  PlanExercise('Lat Pulldown', 4, 120),
-  PlanExercise('Seated Row', 4, 120),
-  PlanExercise('Barbell Curl', 4, 90),
-  PlanExercise('Hammer Curl', 4, 90),
-];
+enum SessionEnd { completed, endedEarly }
+
+/// Where the controller persists what happens. Indexes are 0-based.
+abstract class WorkoutStore {
+  Future<void> saveSet(int ex, int set, double kg, int reps, DateTime at);
+  Future<void> deleteSet(int ex, int set);
+  Future<void> saveRest(DateTime? endsAt, String? label);
+  Future<void> finish(SessionEnd end, DateTime at, String? reason);
+}
+
+/// In-memory default (tests).
+class NoStore implements WorkoutStore {
+  const NoStore();
+
+  @override
+  Future<void> saveSet(
+    int ex,
+    int set,
+    double kg,
+    int reps,
+    DateTime at,
+  ) async {}
+  @override
+  Future<void> deleteSet(int ex, int set) async {}
+  @override
+  Future<void> saveRest(DateTime? endsAt, String? label) async {}
+  @override
+  Future<void> finish(SessionEnd end, DateTime at, String? reason) async {}
+}
 
 class SetEntry {
   double? weight;
@@ -25,7 +46,7 @@ class SetEntry {
 
 class ExerciseProgress {
   ExerciseProgress(this.plan)
-      : sets = List.generate(plan.sets, (_) => SetEntry());
+    : sets = List.generate(plan.sets, (_) => SetEntry());
 
   final PlanExercise plan;
   final List<SetEntry> sets;
@@ -35,13 +56,18 @@ class ExerciseProgress {
 
 typedef SetPos = ({int ex, int set});
 
-/// Active session state (SPEC §5.3). In memory only until M2.
+/// Active session state (SPEC §5.3). Persists through [store].
 class WorkoutController extends ChangeNotifier {
-  WorkoutController(this._clock, this.plan, {this.name = hardcodedWorkoutName})
-      : exercises = [for (final p in plan) ExerciseProgress(p)],
-        startedAt = _clock.now(),
-        rest = RestTimerController(_clock) {
-    rest.addListener(notifyListeners);
+  WorkoutController(
+    this._clock,
+    this.plan, {
+    required this.name,
+    DateTime? startedAt,
+    this.store = const NoStore(),
+  }) : exercises = [for (final p in plan) ExerciseProgress(p)],
+       startedAt = startedAt ?? _clock.now(),
+       rest = RestTimerController(_clock) {
+    rest.addListener(_onRest);
   }
 
   final Clock _clock;
@@ -50,7 +76,23 @@ class WorkoutController extends ChangeNotifier {
   final List<ExerciseProgress> exercises;
   final DateTime startedAt;
   final RestTimerController rest;
+  final WorkoutStore store;
   bool completed = false;
+  bool _busy = false;
+
+  void _onRest() {
+    store
+        .saveRest(rest.endsAt, rest.nextLabel)
+        .catchError((Object e) => debugPrint('saving rest failed: $e'));
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    rest.removeListener(_onRest);
+    rest.dispose();
+    super.dispose();
+  }
 
   Duration get elapsed => _clock.now().difference(startedAt);
 
@@ -76,24 +118,35 @@ class WorkoutController extends ChangeNotifier {
 
   SetEntry entry(int ex, int set) => exercises[ex].sets[set];
 
-  void setWeight(int ex, int set, double? kg) {
+  /// Restore a logged set or a pre-fill value, without saving.
+  void load(int ex, int set, {double? weight, int? reps, bool done = false}) {
+    final s = entry(ex, set);
+    s
+      ..weight = weight
+      ..reps = reps
+      ..done = done;
+  }
+
+  Future<void> setWeight(int ex, int set, double? kg) async {
     final s = entry(ex, set);
     if (kg == null && s.done) return; // a done set keeps its values
     s.weight = kg == null ? null : math.max(0, kg);
     notifyListeners();
+    if (s.done) await store.saveSet(ex, set, s.weight!, s.reps!, _clock.now());
   }
 
-  void setReps(int ex, int set, int? reps) {
+  Future<void> setReps(int ex, int set, int? reps) async {
     final s = entry(ex, set);
-    if (reps == null && s.done) return;
+    if (s.done && (reps == null || reps < 1)) return; // logged sets need ≥1 rep
     s.reps = reps == null ? null : math.max(0, reps);
     notifyListeners();
+    if (s.done) await store.saveSet(ex, set, s.weight!, s.reps!, _clock.now());
   }
 
-  void bumpWeight(int ex, int set, double delta) =>
+  Future<void> bumpWeight(int ex, int set, double delta) =>
       setWeight(ex, set, (entry(ex, set).weight ?? 0) + delta);
 
-  void bumpReps(int ex, int set, int delta) =>
+  Future<void> bumpReps(int ex, int set, int delta) =>
       setReps(ex, set, (entry(ex, set).reps ?? 0) + delta);
 
   bool canTick(int ex, int set) {
@@ -102,32 +155,59 @@ class WorkoutController extends ChangeNotifier {
   }
 
   /// ✓ on the active set: saves it and starts (or restarts) the rest timer.
-  void tick(int ex, int set) {
-    if (!canTick(ex, set)) return;
-    entry(ex, set).done = true;
-    final next = active;
-    if (next == null) {
-      completed = true;
-      rest.skip();
-    } else {
-      final d = restAfter(plan, ex, set);
-      if (d == null) {
-        rest.skip();
-      } else {
-        rest.start(d, _label(next));
+  Future<void> tick(int ex, int set) async {
+    if (_busy || !canTick(ex, set)) return;
+    _busy = true;
+    try {
+      final s = entry(ex, set);
+      final at = _clock.now();
+      await store.saveSet(ex, set, s.weight!, s.reps!, at);
+      s.done = true;
+      // Pre-fill fallback (SPEC §9): empty later sets of this exercise copy this one.
+      for (final later in exercises[ex].sets.skip(set + 1)) {
+        if (!later.done && later.weight == null && later.reps == null) {
+          later
+            ..weight = s.weight
+            ..reps = s.reps;
+        }
       }
+      final next = active;
+      if (next == null) {
+        await complete();
+      } else {
+        final d = restAfter(plan, ex, set);
+        if (d == null) {
+          rest.skip();
+        } else {
+          rest.start(d, _label(next));
+        }
+      }
+      notifyListeners();
+    } finally {
+      _busy = false;
     }
-    notifyListeners();
   }
 
   /// Long-press → undo. Does not touch the rest timer.
-  void undo(int ex, int set) {
+  Future<void> undo(int ex, int set) async {
+    await store.deleteSet(ex, set);
     entry(ex, set).done = false;
     notifyListeners();
   }
 
-  /// End Workout. Phase 1 has no history, so this only stops the rest.
-  void end() => rest.skip();
+  /// All sets done → completed. Also used if the app died right after the last ✓.
+  Future<void> complete() async {
+    rest.skip();
+    await store.finish(SessionEnd.completed, _clock.now(), null);
+    completed = true;
+    notifyListeners();
+  }
+
+  /// End Workout with sets left (SPEC §5.5).
+  Future<void> end(String reason) async {
+    rest.skip();
+    await store.finish(SessionEnd.endedEarly, _clock.now(), reason);
+  }
 
   /// Rest panel: "Set 3 · Lat Pulldown" or "Barbell Curl".
   String _label(SetPos p) {

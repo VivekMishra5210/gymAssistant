@@ -9,6 +9,29 @@ const plan = [
   PlanExercise('Barbell Curl', 2, 90),
 ];
 
+/// Records what the controller asks to persist.
+class RecordingStore implements WorkoutStore {
+  final saved = <String>[];
+  final deleted = <String>[];
+  final finished = <(SessionEnd, String?)>[];
+
+  @override
+  Future<void> saveSet(
+    int ex,
+    int set,
+    double kg,
+    int reps,
+    DateTime at,
+  ) async => saved.add('$ex/$set $kg×$reps');
+  @override
+  Future<void> deleteSet(int ex, int set) async => deleted.add('$ex/$set');
+  @override
+  Future<void> saveRest(DateTime? endsAt, String? label) async {}
+  @override
+  Future<void> finish(SessionEnd end, DateTime at, String? reason) async =>
+      finished.add((end, reason));
+}
+
 void main() {
   group('restAfter (SPEC §4/§7)', () {
     test('between sets uses the current exercise rest', () {
@@ -64,6 +87,13 @@ void main() {
       expect(rest.isResting, isFalse);
     });
 
+    test('restored end time after an app kill keeps counting from it', () {
+      rest.restore(clock.now().add(const Duration(seconds: 45)), 'Set 2 · X');
+      expect(rest.remaining, const Duration(seconds: 45));
+      rest.restore(clock.now().subtract(const Duration(seconds: 1)), 'x');
+      expect(rest.takeFinished(), isTrue);
+    });
+
     test('skip clears the rest', () {
       rest.start(const Duration(seconds: 60), 'x');
       rest.skip();
@@ -74,69 +104,107 @@ void main() {
 
   group('WorkoutController', () {
     late FakeClock clock;
+    late RecordingStore store;
     late WorkoutController w;
 
-    void fill(int ex, int set) {
-      w.setWeight(ex, set, 60);
-      w.setReps(ex, set, 10);
+    Future<void> fill(int ex, int set) async {
+      await w.setWeight(ex, set, 60);
+      await w.setReps(ex, set, 10);
     }
 
     setUp(() {
       clock = FakeClock(DateTime(2026, 1, 1, 10));
-      w = WorkoutController(clock, plan, name: 'Test');
+      store = RecordingStore();
+      w = WorkoutController(clock, plan, name: 'Test', store: store);
     });
 
-    test('✓ is disabled until weight and reps are filled', () {
+    test('✓ is disabled until weight and reps are filled', () async {
       expect(w.canTick(0, 0), isFalse);
-      w.setWeight(0, 0, 0); // bodyweight is allowed
+      await w.setWeight(0, 0, 0); // bodyweight is allowed
       expect(w.canTick(0, 0), isFalse);
-      w.setReps(0, 0, 8);
+      await w.setReps(0, 0, 8);
       expect(w.canTick(0, 0), isTrue);
     });
 
-    test('only the active set can be ticked', () {
-      fill(0, 1);
+    test('only the active set can be ticked', () async {
+      await fill(0, 1);
       expect(w.canTick(0, 1), isFalse);
     });
 
-    test('ticking starts rest with the next label; early tick restarts it', () {
-      fill(0, 0);
-      w.tick(0, 0);
-      expect(w.rest.remaining, const Duration(seconds: 120));
-      expect(w.rest.nextLabel, 'Set 2 · Lat Pulldown');
+    test(
+      'ticking saves the set and starts rest; early tick restarts it',
+      () async {
+        await fill(0, 0);
+        await w.tick(0, 0);
+        expect(store.saved, ['0/0 60.0×10']);
+        expect(w.rest.remaining, const Duration(seconds: 120));
+        expect(w.rest.nextLabel, 'Set 2 · Lat Pulldown');
 
-      clock.advance(const Duration(seconds: 30));
-      fill(0, 1);
-      w.tick(0, 1);
-      expect(w.rest.remaining, const Duration(seconds: 90));
-      expect(w.rest.nextLabel, 'Barbell Curl');
-      expect(w.restOverText, 'Next exercise: Barbell Curl (2 sets)');
-    });
+        clock.advance(const Duration(seconds: 30));
+        await w.tick(0, 1); // pre-filled from set 1
+        expect(w.rest.remaining, const Duration(seconds: 90));
+        expect(w.rest.nextLabel, 'Barbell Curl');
+        expect(w.restOverText, 'Next exercise: Barbell Curl (2 sets)');
+      },
+    );
 
-    test('undo does not restart the timer', () {
-      fill(0, 0);
-      w.tick(0, 0);
+    test(
+      'empty later sets copy the ticked set; filled ones are kept',
+      () async {
+        w.load(0, 1, weight: 55, reps: 8); // pre-filled from history
+        await fill(0, 0);
+        await w.tick(0, 0);
+        expect(w.entry(0, 1).weight, 55);
+        expect(w.entry(1, 0).weight, isNull); // other exercise untouched
+      },
+    );
+
+    test('undo deletes the set and does not restart the timer', () async {
+      await fill(0, 0);
+      await w.tick(0, 0);
       clock.advance(const Duration(seconds: 40));
-      w.undo(0, 0);
+      await w.undo(0, 0);
+      expect(store.deleted, ['0/0']);
       expect(w.rest.remaining, const Duration(seconds: 80));
       expect(w.active, (ex: 0, set: 0));
     });
 
-    test('last set of the last exercise completes the session with no rest', () {
-      for (var e = 0; e < 2; e++) {
-        for (var s = 0; s < 2; s++) {
-          fill(e, s);
-          w.tick(e, s);
-        }
-      }
-      expect(w.completed, isTrue);
-      expect(w.rest.isResting, isFalse);
-      expect(w.volume, 4 * 60 * 10);
+    test('editing a logged set saves it; 0 reps is refused', () async {
+      await fill(0, 0);
+      await w.tick(0, 0);
+      await w.setWeight(0, 0, 62.5);
+      await w.setReps(0, 0, 0);
+      expect(w.entry(0, 0).reps, 10);
+      expect(store.saved.last, '0/0 62.5×10');
     });
 
-    test('weight and reps never go below 0', () {
-      w.bumpWeight(0, 0, -2.5);
-      w.bumpReps(0, 0, -1);
+    test(
+      'last set of the last exercise completes the session with no rest',
+      () async {
+        for (var e = 0; e < 2; e++) {
+          for (var s = 0; s < 2; s++) {
+            await fill(e, s);
+            await w.tick(e, s);
+          }
+        }
+        expect(w.completed, isTrue);
+        expect(w.rest.isResting, isFalse);
+        expect(store.finished, [(SessionEnd.completed, null)]);
+        expect(w.volume, 4 * 60 * 10);
+      },
+    );
+
+    test('End Workout saves ended early with the reason', () async {
+      await fill(0, 0);
+      await w.tick(0, 0);
+      await w.end('Short on time');
+      expect(store.finished, [(SessionEnd.endedEarly, 'Short on time')]);
+      expect(w.rest.isResting, isFalse);
+    });
+
+    test('weight and reps never go below 0', () async {
+      await w.bumpWeight(0, 0, -2.5);
+      await w.bumpReps(0, 0, -1);
       expect(w.entry(0, 0).weight, 0);
       expect(w.entry(0, 0).reps, 0);
     });

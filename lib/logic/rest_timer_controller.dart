@@ -45,6 +45,14 @@ class RestTimerController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Resume after the app was killed: the stored end time is the truth.
+  void restore(DateTime endsAt, String? label) {
+    _endsAt = endsAt;
+    _total = remaining;
+    nextLabel = label;
+    notifyListeners();
+  }
+
   /// ±15s buttons. The end time never goes before now.
   void adjust(Duration delta) {
     final end = _endsAt;
