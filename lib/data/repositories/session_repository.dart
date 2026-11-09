@@ -29,11 +29,102 @@ class LoadedSession {
   final List<({int ex, int set, double weight, int reps})> logs; // 0-based
 }
 
+typedef LoggedSet = ({double weight, int reps, DateTime at});
+
+/// A finished session for Day Detail (SPEC §5.6). Names are the copied ones.
+class DaySession {
+  DaySession({
+    required this.name,
+    required this.status,
+    required this.reason,
+    required this.startedAt,
+    required this.endedAt,
+    required this.exercises,
+  });
+
+  final String name;
+  final String status; // completed | ended_early
+  final String? reason;
+  final DateTime startedAt;
+  final DateTime? endedAt;
+  final List<({String name, List<LoggedSet> sets})> exercises;
+
+  double get volume => exercises
+      .expand((e) => e.sets)
+      .fold(0.0, (v, s) => v + s.weight * s.reps);
+}
+
 /// History: sessions, their snapshot and set logs.
 class SessionRepository {
   SessionRepository(this._db);
 
   final Database _db;
+
+  /// date → status of finished sessions. MIN() makes 'completed' win over
+  /// 'ended_early' when a day has both.
+  Future<Map<String, String>> finishedDays() async {
+    final rows = await _db.rawQuery('''
+      SELECT date, MIN(status) AS status FROM workout_session
+      WHERE status != 'in_progress' GROUP BY date''');
+    return {for (final r in rows) r['date'] as String: r['status'] as String};
+  }
+
+  Future<int> finishedCount() async =>
+      Sqflite.firstIntValue(
+        await _db.rawQuery(
+          "SELECT COUNT(*) FROM workout_session WHERE status != 'in_progress'",
+        ),
+      ) ??
+      0;
+
+  Future<List<DaySession>> sessionsOn(String date) async {
+    final sessions = await _db.query(
+      'workout_session',
+      where: "date = ? AND status != 'in_progress'",
+      whereArgs: [date],
+      orderBy: 'started_at',
+    );
+    return [
+      for (final s in sessions)
+        DaySession(
+          name: s['split_entry_name'] as String,
+          status: s['status'] as String,
+          reason: s['end_reason'] as String?,
+          startedAt: DateTime.fromMillisecondsSinceEpoch(
+            s['started_at'] as int,
+          ),
+          endedAt: s['ended_at'] == null
+              ? null
+              : DateTime.fromMillisecondsSinceEpoch(s['ended_at'] as int),
+          exercises: [
+            for (final se in await _db.query(
+              'session_exercise',
+              where: 'session_id = ?',
+              whereArgs: [s['id']],
+              orderBy: 'position',
+            ))
+              (
+                name: se['exercise_name'] as String,
+                sets: [
+                  for (final l in await _db.query(
+                    'set_log',
+                    where: 'session_exercise_id = ?',
+                    whereArgs: [se['id']],
+                    orderBy: 'set_number',
+                  ))
+                    (
+                      weight: (l['weight_kg'] as num).toDouble(),
+                      reps: l['reps'] as int,
+                      at: DateTime.fromMillisecondsSinceEpoch(
+                        l['completed_at'] as int,
+                      ),
+                    ),
+                ],
+              ),
+          ],
+        ),
+    ];
+  }
 
   Future<int?> inProgressId() async {
     final r = await _db.query(

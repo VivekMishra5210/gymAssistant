@@ -39,6 +39,12 @@ class StateRepository {
         }, where: 'id = 1');
       });
 
+  Future<Set<String>> restDays() async => {
+    for (final r in await _db.query('rest_day_log')) r['date'] as String,
+  };
+
+  Future<int> graceDays() async => (await _row())['streak_grace_days'] as int;
+
   Future<({DateTime? endsAt, String? label})> rest() async {
     final r = await _row();
     final ms = r['rest_ends_at'] as int?;

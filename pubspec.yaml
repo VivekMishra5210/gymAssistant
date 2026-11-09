@@ -39,6 +39,7 @@ dependencies:
   vibration: ^3.2.1
   sqflite: ^2.4.5
   path: ^1.9.1
+  table_calendar: ^3.3.0
 
 dev_dependencies:
   flutter_test:

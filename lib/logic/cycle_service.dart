@@ -5,6 +5,7 @@ import '../data/models/split_entry.dart';
 import '../data/repositories/plan_repository.dart';
 import '../data/repositories/session_repository.dart';
 import '../data/repositories/state_repository.dart';
+import 'streak_calculator.dart';
 import 'workout_controller.dart';
 
 // ===== Pure cycle rules (SPEC §6). Positions are 1-based. =====
@@ -84,6 +85,20 @@ class TodayInfo {
   final Duration? doneDuration;
 }
 
+class History {
+  History({
+    required this.days,
+    required this.restDays,
+    required this.total,
+    required this.streak,
+  });
+
+  final Map<String, String> days; // date → completed | ended_early
+  final Set<String> restDays;
+  final int total;
+  final Streak streak;
+}
+
 class CycleService {
   CycleService(this._clock, this._plan, this._state, this._sessions);
 
@@ -122,6 +137,25 @@ class CycleService {
       doneDuration: done,
     );
   }
+
+  /// Calendar dots + streak row (SPEC §5.2, §8).
+  Future<History> history() async {
+    final days = await _sessions.finishedDays();
+    final rest = await _state.restDays();
+    return History(
+      days: days,
+      restDays: rest,
+      total: await _sessions.finishedCount(),
+      streak: computeStreak(
+        workoutDays: days.keys.toSet(),
+        restDays: rest,
+        grace: await _state.graceDays(),
+        today: _today,
+      ),
+    );
+  }
+
+  Future<List<DaySession>> day(String date) => _sessions.sessionsOn(date);
 
   /// Start Workout / Train anyway / Start next anyway. Returns the session id
   /// (the running one if a session is already in progress).

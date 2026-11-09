@@ -66,9 +66,9 @@
     "semantic_hash": ""
   },
   "pubspec.yaml": {
-    "mtime": 1794241405.388891,
-    "seen": 1794241953.3768423,
-    "ast_hash": "ec8a5f487e128665a7bb6685e2844dff",
+    "mtime": 1794242896.4844108,
+    "seen": 1794243381.2509792,
+    "ast_hash": "daa4a6e39a6d5852f0c5e2266d6cdd05",
     "semantic_hash": ""
   },
   "test/widget_test.dart": {
@@ -138,9 +138,9 @@
     "semantic_hash": ""
   },
   "lib/ui/dashboard/dashboard_screen.dart": {
-    "mtime": 1794241713.6737058,
-    "seen": 1794241953.3768423,
-    "ast_hash": "c3deb976d697025774c497aeded10c16",
+    "mtime": 1794243212.066025,
+    "seen": 1794243381.2509792,
+    "ast_hash": "4095b45ed4ba3a420c53c54d72ab5fed",
     "semantic_hash": ""
   },
   "lib/ui/workout/rest_over_dialog.dart": {
@@ -186,27 +186,45 @@
     "semantic_hash": ""
   },
   "lib/data/repositories/session_repository.dart": {
-    "mtime": 1794241713.642398,
-    "seen": 1794241953.3768423,
-    "ast_hash": "065925b7b44e40f5db28918bb1f7e8f7",
+    "mtime": 1794243034.7783701,
+    "seen": 1794243381.2509792,
+    "ast_hash": "fa0f8b20c04cc44fb14b9683c3dcb50e",
     "semantic_hash": ""
   },
   "lib/data/repositories/state_repository.dart": {
-    "mtime": 1794241713.6454935,
-    "seen": 1794241953.3768423,
-    "ast_hash": "0dbf05bb34288f9957a804a5168e7859",
+    "mtime": 1794242916.0350564,
+    "seen": 1794243381.2509792,
+    "ast_hash": "b0cd904a77cb198ad2ebb47f6467c5f9",
     "semantic_hash": ""
   },
   "lib/logic/cycle_service.dart": {
-    "mtime": 1794241713.656073,
-    "seen": 1794241953.3768423,
-    "ast_hash": "5d89645e9983b942eb8c0eb35dcb8520",
+    "mtime": 1794242957.3926604,
+    "seen": 1794243381.2509792,
+    "ast_hash": "56f6fc4ff889eca0d08c5aba35a6f69e",
     "semantic_hash": ""
   },
   "test/cycle_service_test.dart": {
     "mtime": 1794241713.7139773,
     "seen": 1794241953.3768423,
     "ast_hash": "16661db41b79c4336303b70f3b8b5de0",
+    "semantic_hash": ""
+  },
+  "lib/logic/streak_calculator.dart": {
+    "mtime": 1794243034.7959943,
+    "seen": 1794243381.2509792,
+    "ast_hash": "02f07f3a2c15f1916a90921e1e333b7f",
+    "semantic_hash": ""
+  },
+  "lib/ui/day_detail/day_detail_screen.dart": {
+    "mtime": 1794243034.820902,
+    "seen": 1794243381.2509792,
+    "ast_hash": "086a4033f629412dad36bdce303bf616",
+    "semantic_hash": ""
+  },
+  "test/streak_calculator_test.dart": {
+    "mtime": 1794243034.8679066,
+    "seen": 1794243381.2509792,
+    "ast_hash": "713fc1abce0f3e643b1a742e053ebec8",
     "semantic_hash": ""
   }
 }
