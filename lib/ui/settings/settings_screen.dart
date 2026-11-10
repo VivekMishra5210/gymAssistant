@@ -7,7 +7,7 @@ import '../../core/time/dates.dart';
 import '../../data/repositories/state_repository.dart';
 import '../widgets/common.dart';
 import 'exercises_screen.dart';
-import 'split_editor_screen.dart';
+import 'splits_screen.dart';
 
 /// SPEC §5.7. Each change saves right away.
 class SettingsScreen extends StatefulWidget {
@@ -109,10 +109,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ListTile(
                   minTileHeight: 56,
                   leading: const Icon(Icons.calendar_view_week),
-                  title: const Text('Split'),
-                  subtitle: const Text('Workout & rest days, exercises'),
+                  title: const Text('Splits'),
+                  subtitle: const Text('Pick the split you follow, edit days'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _push(const SplitEditorScreen()),
+                  onTap: () => _push(const SplitsScreen()),
                 ),
                 ListTile(
                   minTileHeight: 56,
@@ -122,10 +122,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onTap: () => _push(const ExercisesScreen()),
                 ),
                 const Divider(),
-                ListTile(
-                  title: const Text('Streak grace days'),
-                  subtitle: const Text('Missed days allowed in a row'),
-                  trailing: SegmentedButton<int>(
+                const ListTile(
+                  title: Text('Streak grace days'),
+                  subtitle: Text('Missed days allowed in a row'),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: SegmentedButton<int>(
                     showSelectedIcon: false,
                     segments: [
                       for (var g = 0; g <= 3; g++)

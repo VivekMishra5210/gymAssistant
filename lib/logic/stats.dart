@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import '../core/time/dates.dart';
 
 /// One finished session (completed or ended early).
@@ -73,3 +75,43 @@ String bmiCategory(double bmi) => bmi < 18.5
     : bmi < 30
     ? 'Overweight'
     : 'Obese';
+
+// ===== Exercise progress / PRs =====
+
+/// For cardio, [reps] holds minutes and [weight] is 0.
+typedef ExerciseSet = ({double weight, int reps});
+typedef ExerciseSession = ({String date, List<ExerciseSet> sets});
+
+/// Epley estimate of a one-rep max.
+double oneRepMax(double kg, int reps) => reps <= 1 ? kg : kg * (1 + reps / 30);
+
+/// Chart value of a session: heaviest set in kg, or total minutes for cardio.
+double sessionValue(ExerciseSession s, {required bool timed}) => timed
+    ? s.sets.fold<double>(0, (m, x) => m + x.reps)
+    : s.sets.fold<double>(0, (m, x) => math.max(m, x.weight));
+
+/// Heaviest set ever (more reps breaks a tie; the first time counts).
+({ExerciseSet set, String date})? bestSet(List<ExerciseSession> all) {
+  ({ExerciseSet set, String date})? best;
+  for (final s in all) {
+    for (final x in s.sets) {
+      final b = best?.set;
+      if (b == null ||
+          x.weight > b.weight ||
+          (x.weight == b.weight && x.reps > b.reps)) {
+        best = (set: x, date: s.date);
+      }
+    }
+  }
+  return best;
+}
+
+/// Best estimated 1RM across all sets, or null with no sets.
+double? bestOneRepMax(List<ExerciseSession> all) {
+  double? best;
+  for (final x in all.expand((s) => s.sets)) {
+    final v = oneRepMax(x.weight, x.reps);
+    if (best == null || v > best) best = v;
+  }
+  return best;
+}

@@ -85,7 +85,7 @@ class TodayInfo {
     required this.nextWorkout,
     required this.exercises,
     required this.sessionId,
-    required this.setsDone,
+    required this.progress,
     required this.doneDuration,
   });
 
@@ -95,7 +95,7 @@ class TodayInfo {
   final SplitEntry nextWorkout; // first workout entry from the pointer on
   final List<PlanExercise> exercises; // of [current]
   final int? sessionId; // in-progress session
-  final int setsDone;
+  final ({int done, int total})? progress; // exercises, while in progress
   final Duration? doneDuration;
 }
 
@@ -149,12 +149,19 @@ class CycleService {
       ? (await _state.pointer()).position
       : await _plan.splitPointer(splitId);
 
-  Future<void> _setPosition(int splitId, int pos, {required bool fromToday}) async {
+  Future<void> _setPosition(
+    int splitId,
+    int pos, {
+    required bool fromToday,
+  }) async {
     if (splitId != await _plan.activeSplitId()) {
       return _plan.setSplitPointer(splitId, pos);
     }
     final p = await _state.pointer();
-    await _state.setPointer((position: pos, since: fromToday ? _today : p.since));
+    await _state.setPointer((
+      position: pos,
+      since: fromToday ? _today : p.since,
+    ));
   }
 
   /// Run a split edit (add/delete/reorder), keeping the pointer on its entry.
@@ -162,10 +169,14 @@ class CycleService {
     int splitId,
     Future<void> Function(PlanRepository plan) change,
   ) async {
-    final oldIds = [for (final e in await _plan.entries(splitId: splitId)) e.id];
+    final oldIds = [
+      for (final e in await _plan.entries(splitId: splitId)) e.id,
+    ];
     final before = await position(splitId);
     await change(_plan);
-    final newIds = [for (final e in await _plan.entries(splitId: splitId)) e.id];
+    final newIds = [
+      for (final e in await _plan.entries(splitId: splitId)) e.id,
+    ];
     final pos = keepPointer(oldIds, before, newIds);
     if (pos != before) await _setPosition(splitId, pos, fromToday: false);
   }
@@ -185,10 +196,12 @@ class CycleService {
     }
     final count = (await _plan.entries(splitId: splitId)).length;
     final saved = await _plan.splitPointer(splitId);
-    await _state.switchSplit(oldId, (await _state.pointer()).position, splitId, (
-      position: count == 0 ? 1 : clampPosition(saved, count),
-      since: _today,
-    ));
+    await _state.switchSplit(
+      oldId,
+      (await _state.pointer()).position,
+      splitId,
+      (position: count == 0 ? 1 : clampPosition(saved, count), since: _today),
+    );
   }
 
   /// Run on app open/resume: rest catch-up, then what the Today card shows.
@@ -216,7 +229,9 @@ class CycleService {
           ? const []
           : [for (final x in await _plan.exercises(current.id)) x.plan],
       sessionId: inProgress,
-      setsDone: inProgress == null ? 0 : await _sessions.setsDone(inProgress),
+      progress: inProgress == null
+          ? null
+          : await _sessions.exerciseProgress(inProgress),
       doneDuration: done,
     );
   }
@@ -239,6 +254,9 @@ class CycleService {
   }
 
   Future<List<SessionStat>> stats() => _sessions.stats();
+
+  Future<List<ExerciseSession>> exerciseHistory(int exerciseId) =>
+      _sessions.exerciseHistory(exerciseId);
 
   Future<List<DaySession>> day(String date) => _sessions.sessionsOn(date);
 

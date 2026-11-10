@@ -63,7 +63,8 @@ class _SplitEditorScreenState extends State<SplitEditorScreen> {
       title: 'New workout',
       labels: const ['Name (e.g. Back + Biceps)'],
     );
-    if (r != null) await _edit((p) => p.addEntry(_splitId, EntryType.workout, r[0]));
+    if (r == null) return;
+    await _edit((p) => p.addEntry(_splitId, EntryType.workout, r[0]));
   }
 
   Future<void> _rename(SplitEntry e) async {
@@ -122,7 +123,9 @@ class _SplitEditorScreenState extends State<SplitEditorScreen> {
   @override
   Widget build(BuildContext context) {
     final entries = _entries;
-    final full = entries == null || entries.length >= _maxEntries; // also blocks taps before load
+    final full =
+        entries == null ||
+        entries.length >= _maxEntries; // also blocks taps before load
     return Scaffold(
       appBar: AppBar(title: Text(widget.title)),
       body: entries == null
@@ -161,7 +164,9 @@ class _SplitEditorScreenState extends State<SplitEditorScreen> {
                   ),
                   onPressed: full
                       ? null
-                      : () => _edit((p) => p.addEntry(_splitId, EntryType.rest, 'Rest')),
+                      : () => _edit(
+                          (p) => p.addEntry(_splitId, EntryType.rest, 'Rest'),
+                        ),
                   icon: const Icon(Icons.bedtime),
                   label: const Text('Add Rest'),
                 ),

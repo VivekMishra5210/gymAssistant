@@ -52,4 +52,38 @@ void main() {
     expect(bmiCategory(25), 'Overweight');
     expect(bmiCategory(30), 'Obese');
   });
+
+  group('exercise progress', () {
+    final history = <ExerciseSession>[
+      (
+        date: '2026-01-01',
+        sets: [(weight: 60, reps: 10), (weight: 70, reps: 6)],
+      ),
+      (
+        date: '2026-01-05',
+        sets: [(weight: 70, reps: 8), (weight: 65, reps: 10)],
+      ),
+    ];
+
+    test('best set: heaviest, more reps breaks a tie', () {
+      final b = bestSet(history)!;
+      expect((b.set.weight, b.set.reps, b.date), (70.0, 8, '2026-01-05'));
+      expect(bestSet([]), isNull);
+    });
+
+    test('Epley 1RM; one rep is the weight itself', () {
+      expect(oneRepMax(100, 1), 100);
+      expect(oneRepMax(100, 30), 200);
+      expect(bestOneRepMax(history), closeTo(70 * (1 + 8 / 30), 1e-9));
+    });
+
+    test('chart value: heaviest kg, or total minutes for cardio', () {
+      expect(sessionValue(history[0], timed: false), 70);
+      final run = (
+        date: '2026-01-02',
+        sets: [(weight: 0.0, reps: 20), (weight: 0.0, reps: 15)],
+      );
+      expect(sessionValue(run, timed: true), 35);
+    });
+  });
 }

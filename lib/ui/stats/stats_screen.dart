@@ -5,6 +5,7 @@ import '../../core/time/clock.dart';
 import '../../core/time/dates.dart';
 import '../../logic/cycle_service.dart';
 import '../../logic/stats.dart';
+import '../settings/exercises_screen.dart';
 
 String _dur(Duration d) =>
     d.inHours > 0 ? '${d.inHours}h ${d.inMinutes % 60}m' : '${d.inMinutes}m';
@@ -30,7 +31,18 @@ class _StatsScreenState extends State<StatsScreen> {
   Widget build(BuildContext context) {
     final today = dateKey(context.read<Clock>().now());
     return Scaffold(
-      appBar: AppBar(title: const Text('Stats')),
+      appBar: AppBar(
+        title: const Text('Stats'),
+        actions: [
+          TextButton.icon(
+            onPressed: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const ExercisesScreen())),
+            icon: const Icon(Icons.emoji_events),
+            label: const Text('PRs'),
+          ),
+        ],
+      ),
       body: FutureBuilder<List<SessionStat>>(
         future: _all,
         builder: (context, snap) {

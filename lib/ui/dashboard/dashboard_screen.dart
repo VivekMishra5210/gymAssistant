@@ -183,7 +183,17 @@ class _DashboardScreenState extends State<DashboardScreen>
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: _today(info),
+                    children: [
+                      Text(
+                        info.splitName,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.greenAccent,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      ..._today(info),
+                    ],
                   ),
                 ),
               ),
@@ -260,7 +270,10 @@ class _DashboardScreenState extends State<DashboardScreen>
         return [
           Text('In progress · ${info.current.name}', style: big),
           const SizedBox(height: 8),
-          Text('${info.setsDone} sets done', style: sub),
+          Text(
+            '${info.progress!.done}/${info.progress!.total} exercises',
+            style: sub,
+          ),
           const SizedBox(height: 16),
           _MainButton('Resume', () => _go(() async => info.sessionId!)),
         ];

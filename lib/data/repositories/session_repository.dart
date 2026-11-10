@@ -48,7 +48,7 @@ class DaySession {
   final String? reason;
   final DateTime startedAt;
   final DateTime? endedAt;
-  final List<({String name, List<LoggedSet> sets})> exercises;
+  final List<({String name, bool timed, List<LoggedSet> sets})> exercises;
 
   double get volume => exercises
       .expand((e) => e.sets)
@@ -125,6 +125,7 @@ class SessionRepository {
             ))
               (
                 name: se['exercise_name'] as String,
+                timed: se['timed'] == 1,
                 sets: [
                   for (final l in await _db.query(
                     'set_log',
@@ -171,17 +172,18 @@ class SessionRepository {
     );
   }
 
-  Future<int> setsDone(int sessionId) async =>
-      Sqflite.firstIntValue(
-        await _db.rawQuery(
-          '''
-        SELECT COUNT(*) FROM set_log sl
-        JOIN session_exercise se ON se.id = sl.session_exercise_id
-        WHERE se.session_id = ?''',
-          [sessionId],
-        ),
-      ) ??
-      0;
+  /// Exercises with all planned sets logged, out of all in the session.
+  Future<({int done, int total})> exerciseProgress(int sessionId) async {
+    final r = (await _db.rawQuery(
+      '''
+      SELECT COUNT(*) AS total,
+        COALESCE(SUM((SELECT COUNT(*) FROM set_log sl
+          WHERE sl.session_exercise_id = se.id) >= se.planned_sets), 0) AS done
+      FROM session_exercise se WHERE se.session_id = ?''',
+      [sessionId],
+    )).single;
+    return (done: r['done'] as int, total: r['total'] as int);
+  }
 
   /// Start Workout: session row + snapshot of the plan, in one transaction.
   Future<int> start({
@@ -205,6 +207,7 @@ class SessionRepository {
         'position': i + 1,
         'planned_sets': x.plan.sets,
         'rest_seconds': x.plan.restSeconds,
+        'timed': x.plan.timed ? 1 : 0,
       });
     }
     return id;
@@ -242,6 +245,7 @@ class SessionRepository {
             r['exercise_name'] as String,
             r['planned_sets'] as int,
             r['rest_seconds'] as int,
+            timed: r['timed'] == 1,
           ),
       ],
       logs: [
@@ -254,6 +258,34 @@ class SessionRepository {
           ),
       ],
     );
+  }
+
+  /// Every finished session of [exerciseId], oldest first, with its sets.
+  Future<List<ExerciseSession>> exerciseHistory(int exerciseId) async {
+    final rows = await _db.rawQuery(
+      '''
+      SELECT s.id, s.date, sl.weight_kg, sl.reps
+      FROM set_log sl
+      JOIN session_exercise se ON se.id = sl.session_exercise_id
+      JOIN workout_session s ON s.id = se.session_id
+      WHERE se.exercise_id = ? AND s.status != 'in_progress'
+      ORDER BY s.started_at, se.position, sl.set_number''',
+      [exerciseId],
+    );
+    final out = <int, ExerciseSession>{};
+    for (final r in rows) {
+      out
+          .putIfAbsent(
+            r['id'] as int,
+            () => (date: r['date'] as String, sets: []),
+          )
+          .sets
+          .add((
+            weight: (r['weight_kg'] as num).toDouble(),
+            reps: r['reps'] as int,
+          ));
+    }
+    return out.values.toList();
   }
 
   /// Pre-fill (SPEC §9): last weight/reps for this exercise + set number,

@@ -47,7 +47,10 @@ class SetEntry {
 
 class ExerciseProgress {
   ExerciseProgress(this.plan)
-    : sets = List.generate(plan.sets, (_) => SetEntry());
+    : sets = List.generate(
+        plan.sets,
+        (_) => SetEntry()..weight = plan.timed ? 0 : null, // cardio: no kg
+      );
 
   final PlanExercise plan;
   final List<SetEntry> sets;

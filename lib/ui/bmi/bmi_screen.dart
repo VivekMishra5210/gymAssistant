@@ -6,6 +6,7 @@ import '../../core/time/dates.dart';
 import '../../data/repositories/state_repository.dart';
 import '../../logic/stats.dart';
 import '../widgets/common.dart';
+import '../widgets/line_chart.dart';
 
 typedef _Data = ({
   double? height,
@@ -101,6 +102,7 @@ class _BmiScreenState extends State<BmiScreen> {
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 88),
               children: [
                 _card(d),
+                if (d.log.length >= 2) _trend(d.log.reversed.toList()),
                 ListTile(
                   minTileHeight: 56,
                   leading: const Icon(Icons.height),
@@ -150,6 +152,33 @@ class _BmiScreenState extends State<BmiScreen> {
         onPressed: _logWeight,
         icon: const Icon(Icons.monitor_weight),
         label: const Text('Log weight'),
+      ),
+    );
+  }
+
+  /// Weigh-ins oldest first, with the change since the first one.
+  Widget _trend(List<({int id, String date, double kg})> log) {
+    final change = log.last.kg - log.first.kg;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Weight trend · ${change >= 0 ? '+' : '−'}${_num(change.abs())} kg',
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 12),
+            LineChart(
+              values: [for (final w in log) w.kg],
+              firstLabel: log.first.date,
+              lastLabel: log.last.date,
+              unit: 'kg',
+              color: Colors.lightBlueAccent,
+            ),
+          ],
+        ),
       ),
     );
   }

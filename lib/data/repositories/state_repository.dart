@@ -38,20 +38,24 @@ class StateRepository {
 
   /// Switch splits: park the old split's position in its row, then make
   /// [splitId] active with pointer [p]. One transaction so they can't diverge.
-  Future<void> switchSplit(int oldId, int oldPosition, int splitId, Pointer p) =>
-      _db.transaction((txn) async {
-        await txn.update(
-          'split',
-          {'pointer_position': oldPosition},
-          where: 'id = ?',
-          whereArgs: [oldId],
-        );
-        await txn.update('app_state', {
-          'active_split_id': splitId,
-          'pointer_position': p.position,
-          'pointer_since': p.since,
-        }, where: 'id = 1');
-      });
+  Future<void> switchSplit(
+    int oldId,
+    int oldPosition,
+    int splitId,
+    Pointer p,
+  ) => _db.transaction((txn) async {
+    await txn.update(
+      'split',
+      {'pointer_position': oldPosition},
+      where: 'id = ?',
+      whereArgs: [oldId],
+    );
+    await txn.update('app_state', {
+      'active_split_id': splitId,
+      'pointer_position': p.position,
+      'pointer_since': p.since,
+    }, where: 'id = 1');
+  });
 
   /// Rest-day catch-up: log the passed rest days and move the pointer together.
   Future<void> applyCatchUp(Pointer p, List<String> restDates) =>

@@ -6,7 +6,13 @@ import '../models/split_entry.dart';
 /// [id] is the plan_exercise row; [exerciseId] the exercise it points to.
 typedef PlannedExercise = ({int id, int exerciseId, PlanExercise plan});
 
-typedef ExerciseRow = ({int id, String name, String? muscleGroup});
+typedef ExerciseRow = ({
+  int id,
+  String name,
+  String? muscleGroup,
+  bool archived,
+  bool timed,
+});
 
 /// The plan: split entries, their exercises, and the exercise list.
 const _activeId = '(SELECT active_split_id FROM app_state WHERE id = 1)';
@@ -27,7 +33,7 @@ class PlanRepository {
   Future<List<PlannedExercise>> exercises(int splitEntryId) async {
     final rows = await _db.rawQuery(
       '''
-      SELECT pe.id, pe.exercise_id, e.name, pe.sets, pe.rest_seconds
+      SELECT pe.id, pe.exercise_id, e.name, e.timed, pe.sets, pe.rest_seconds
       FROM plan_exercise pe JOIN exercise e ON e.id = pe.exercise_id
       WHERE pe.split_entry_id = ? ORDER BY pe.position''',
       [splitEntryId],
@@ -41,6 +47,7 @@ class PlanRepository {
             r['name'] as String,
             r['sets'] as int,
             r['rest_seconds'] as int,
+            timed: r['timed'] == 1,
           ),
         ),
     ];
@@ -48,9 +55,8 @@ class PlanRepository {
 
   // ===== Splits (college, exams, home…) =====
 
-  Future<int> activeSplitId() async => ((await _db.rawQuery(
-    'SELECT $_activeId AS id',
-  )).single['id'] as int);
+  Future<int> activeSplitId() async =>
+      ((await _db.rawQuery('SELECT $_activeId AS id')).single['id'] as int);
 
   /// Every split with its number of days, oldest first.
   Future<List<({int id, String name, int days})>> splits() async => [
@@ -61,11 +67,13 @@ class PlanRepository {
       (id: r['id'] as int, name: r['name'] as String, days: r['days'] as int),
   ];
 
-  Future<String> splitName(int id) async => (await _db.query(
-    'split',
-    where: 'id = ?',
-    whereArgs: [id],
-  )).single['name'] as String;
+  Future<String> splitName(int id) async =>
+      (await _db.query(
+            'split',
+            where: 'id = ?',
+            whereArgs: [id],
+          )).single['name']
+          as String;
 
   Future<int> addSplit(String name) => _db.insert('split', {'name': name});
 
@@ -77,11 +85,13 @@ class PlanRepository {
       _db.delete('split', where: 'id = ?', whereArgs: [id]);
 
   /// Saved cycle position of a split that isn't active.
-  Future<int> splitPointer(int id) async => (await _db.query(
-    'split',
-    where: 'id = ?',
-    whereArgs: [id],
-  )).single['pointer_position'] as int;
+  Future<int> splitPointer(int id) async =>
+      (await _db.query(
+            'split',
+            where: 'id = ?',
+            whereArgs: [id],
+          )).single['pointer_position']
+          as int;
 
   Future<void> setSplitPointer(int id, int position) => _db.update(
     'split',
@@ -196,22 +206,40 @@ class PlanRepository {
 
   // ===== Exercise list =====
 
-  Future<List<ExerciseRow>> allExercises() async => [
+  /// Archived ones are hidden from the picker; [withArchived] lists them last.
+  Future<List<ExerciseRow>> allExercises({bool withArchived = false}) async => [
     for (final r in await _db.query(
       'exercise',
-      where: 'is_archived = 0',
-      orderBy: 'name COLLATE NOCASE',
+      where: withArchived ? null : 'is_archived = 0',
+      orderBy: 'is_archived, name COLLATE NOCASE',
     ))
       (
         id: r['id'] as int,
         name: r['name'] as String,
         muscleGroup: r['muscle_group'] as String?,
+        archived: r['is_archived'] == 1,
+        timed: r['timed'] == 1,
       ),
   ];
 
+  /// Plans already using it keep it; history is untouched.
+  Future<void> setArchived(int id, bool archived) => _db.update(
+    'exercise',
+    {'is_archived': archived ? 1 : 0},
+    where: 'id = ?',
+    whereArgs: [id],
+  );
+
   /// Throws a [DatabaseException] if the name is taken.
-  Future<int> createExercise(String name, String? muscleGroup) =>
-      _db.insert('exercise', {'name': name, 'muscle_group': muscleGroup});
+  Future<int> createExercise(
+    String name,
+    String? muscleGroup, {
+    bool timed = false,
+  }) => _db.insert('exercise', {
+    'name': name,
+    'muscle_group': muscleGroup,
+    'timed': timed ? 1 : 0,
+  });
 
   /// History keeps the old name (session_exercise copies it).
   Future<void> updateExercise(int id, String name, String? muscleGroup) =>

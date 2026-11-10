@@ -91,14 +91,26 @@ const _schemaV3 = [
   'UPDATE app_state SET active_split_id = 1',
 ];
 
+/// v4: cardio. A timed exercise logs minutes (in set_log.reps, weight 0).
+/// session_exercise copies the flag so history keeps its meaning.
+const _schemaV4 = [
+  'ALTER TABLE exercise ADD COLUMN timed INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE session_exercise ADD COLUMN timed INTEGER NOT NULL DEFAULT 0',
+];
+
 Future<Database> openAppDatabase(Clock clock) async {
   final path = p.join(await getDatabasesPath(), 'gym_assistant.db');
   return openDatabase(
     path,
-    version: 3,
+    version: 4,
     onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
     onCreate: (db, _) async {
-      for (final sql in [..._schemaV1, ..._schemaV2, ..._schemaV3]) {
+      for (final sql in [
+        ..._schemaV1,
+        ..._schemaV2,
+        ..._schemaV3,
+        ..._schemaV4,
+      ]) {
         await db.execute(sql);
       }
       await _seed(db, dateKey(clock.now()));
@@ -111,6 +123,11 @@ Future<Database> openAppDatabase(Clock clock) async {
       }
       if (from < 3) {
         for (final sql in _schemaV3) {
+          await db.execute(sql);
+        }
+      }
+      if (from < 4) {
+        for (final sql in _schemaV4) {
           await db.execute(sql);
         }
       }

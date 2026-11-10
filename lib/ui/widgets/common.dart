@@ -8,6 +8,7 @@ void showSnack(BuildContext context, String text) =>
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
 
 /// Dialog with one text field per label. The first field is required.
+/// With [options], a choice is shown below and its value appended last.
 /// Returns the trimmed values, or null if cancelled.
 Future<List<String>?> promptText(
   BuildContext context, {
@@ -15,18 +16,26 @@ Future<List<String>?> promptText(
   required List<String> labels,
   List<String> initial = const [],
   bool number = false,
+  List<String> options = const [],
 }) => showDialog<List<String>>(
   context: context,
-  builder: (_) => _TextDialog(title, labels, initial, number),
+  builder: (_) => _TextDialog(title, labels, initial, number, options),
 );
 
 class _TextDialog extends StatefulWidget {
-  const _TextDialog(this.title, this.labels, this.initial, this.number);
+  const _TextDialog(
+    this.title,
+    this.labels,
+    this.initial,
+    this.number,
+    this.options,
+  );
 
   final String title;
   final List<String> labels;
   final List<String> initial;
   final bool number;
+  final List<String> options;
 
   @override
   State<_TextDialog> createState() => _TextDialogState();
@@ -48,10 +57,14 @@ class _TextDialogState extends State<_TextDialog> {
     super.dispose();
   }
 
+  late String? _option = widget.options.firstOrNull;
+
   bool get _valid => _ctrls.first.text.trim().isNotEmpty;
 
   void _ok() {
-    if (_valid) Navigator.pop(context, [for (final c in _ctrls) c.text.trim()]);
+    if (_valid) {
+      Navigator.pop(context, [for (final c in _ctrls) c.text.trim(), ?_option]);
+    }
   }
 
   @override
@@ -72,6 +85,18 @@ class _TextDialogState extends State<_TextDialog> {
             onChanged: (_) => setState(() {}),
             onSubmitted: (_) => _ok(),
           ),
+        if (widget.options.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          SegmentedButton<String>(
+            showSelectedIcon: false,
+            segments: [
+              for (final o in widget.options)
+                ButtonSegment(value: o, label: Text(o)),
+            ],
+            selected: {_option!},
+            onSelectionChanged: (v) => setState(() => _option = v.single),
+          ),
+        ],
       ],
     ),
     actions: [

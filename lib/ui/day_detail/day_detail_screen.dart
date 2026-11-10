@@ -102,7 +102,9 @@ class _SessionCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        '${_kg(set.weight)} kg × ${set.reps}',
+                        e.timed
+                            ? '${set.reps} min'
+                            : '${_kg(set.weight)} kg × ${set.reps}',
                         style: const TextStyle(fontSize: 16),
                       ),
                     ),

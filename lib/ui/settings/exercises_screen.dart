@@ -3,17 +3,28 @@ import 'package:provider/provider.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../../data/repositories/plan_repository.dart';
+import '../stats/exercise_progress_screen.dart';
 import '../widgets/common.dart';
 
 const _fields = ['Name', 'Muscle group (optional)'];
+const _cardio = 'Cardio (min)';
 
-/// Ask for name + muscle group and create the exercise. Returns its id.
+/// Ask for name, muscle group and type, then create it. Returns its id.
 Future<int?> createExercise(BuildContext context) async {
   final plan = context.read<PlanRepository>();
-  final r = await promptText(context, title: 'New exercise', labels: _fields);
+  final r = await promptText(
+    context,
+    title: 'New exercise',
+    labels: _fields,
+    options: const ['Weights', _cardio],
+  );
   if (r == null || !context.mounted) return null;
   try {
-    return await plan.createExercise(r[0], r[1].isEmpty ? null : r[1]);
+    return await plan.createExercise(
+      r[0],
+      r[1].isEmpty ? null : r[1],
+      timed: r[2] == _cardio,
+    );
   } on DatabaseException catch (e) {
     if (!e.isUniqueConstraintError()) rethrow;
     if (context.mounted) showSnack(context, '"${r[0]}" already exists');
@@ -39,7 +50,9 @@ class _ExercisesScreenState extends State<ExercisesScreen> {
   }
 
   Future<void> _load() async {
-    final all = await context.read<PlanRepository>().allExercises();
+    final all = await context.read<PlanRepository>().allExercises(
+      withArchived: true,
+    );
     if (mounted) setState(() => _all = all);
   }
 
@@ -57,6 +70,17 @@ class _ExercisesScreenState extends State<ExercisesScreen> {
     } on DatabaseException catch (err) {
       if (!err.isUniqueConstraintError()) rethrow;
       if (mounted) showSnack(context, '"${r[0]}" already exists');
+    }
+    await _load();
+  }
+
+  Future<void> _archive(ExerciseRow e) async {
+    await context.read<PlanRepository>().setArchived(e.id, !e.archived);
+    if (mounted) {
+      showSnack(
+        context,
+        e.archived ? 'Restored ${e.name}' : 'Archived ${e.name}',
+      );
     }
     await _load();
   }
@@ -81,12 +105,37 @@ class _ExercisesScreenState extends State<ExercisesScreen> {
                 for (final e in all)
                   ListTile(
                     minTileHeight: 56,
+                    textColor: e.archived ? Colors.white38 : null,
                     title: Text(e.name),
-                    subtitle: e.muscleGroup == null
-                        ? null
-                        : Text(e.muscleGroup!),
-                    trailing: const Icon(Icons.edit),
-                    onTap: () => _edit(e),
+                    subtitle: e.archived || e.timed || e.muscleGroup != null
+                        ? Text(
+                            [
+                              ?e.muscleGroup,
+                              if (e.timed) 'Cardio',
+                              if (e.archived) 'Archived',
+                            ].join(' · '),
+                          )
+                        : null,
+                    // Tap → progress & PRs; edit/archive live in the ⋮ menu.
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => ExerciseProgressScreen(e),
+                      ),
+                    ),
+                    trailing: PopupMenuButton<String>(
+                      onSelected: (v) => v == 'edit' ? _edit(e) : _archive(e),
+                      itemBuilder: (_) => [
+                        if (!e.archived)
+                          const PopupMenuItem(
+                            value: 'edit',
+                            child: Text('Edit'),
+                          ),
+                        PopupMenuItem(
+                          value: 'archive',
+                          child: Text(e.archived ? 'Unarchive' : 'Archive'),
+                        ),
+                      ],
+                    ),
                   ),
               ],
             ),

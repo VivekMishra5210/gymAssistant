@@ -146,6 +146,11 @@ class _WorkoutScreenState extends State<WorkoutScreen>
       context: context,
       builder: (_) => _NumberDialog(
         weight: weight,
+        title: weight
+            ? 'Weight (kg)'
+            : _w.exercises[ex].plan.timed
+            ? 'Minutes'
+            : 'Reps',
         initial: current == null
             ? ''
             : weight
@@ -165,20 +170,22 @@ class _WorkoutScreenState extends State<WorkoutScreen>
   }
 
   Future<void> _doneSetMenu(int ex, int set) async {
+    final timed = _w.exercises[ex].plan.timed;
     final action = await showModalBottomSheet<String>(
       context: context,
       builder: (c) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: const Icon(Icons.fitness_center),
-              title: const Text('Edit weight'),
-              onTap: () => Navigator.of(c).pop('w'),
-            ),
+            if (!timed)
+              ListTile(
+                leading: const Icon(Icons.fitness_center),
+                title: const Text('Edit weight'),
+                onTap: () => Navigator.of(c).pop('w'),
+              ),
             ListTile(
               leading: const Icon(Icons.repeat),
-              title: const Text('Edit reps'),
+              title: Text(timed ? 'Edit minutes' : 'Edit reps'),
               onTap: () => Navigator.of(c).pop('r'),
             ),
             ListTile(
@@ -334,9 +341,14 @@ class _EndReasonDialogState extends State<_EndReasonDialog> {
 
 /// Owns its text controller so it's disposed only after the close animation ends.
 class _NumberDialog extends StatefulWidget {
-  const _NumberDialog({required this.weight, required this.initial});
+  const _NumberDialog({
+    required this.weight,
+    required this.title,
+    required this.initial,
+  });
 
   final bool weight;
+  final String title;
   final String initial;
 
   @override
@@ -356,7 +368,7 @@ class _NumberDialogState extends State<_NumberDialog> {
   Widget build(BuildContext context) {
     final weight = widget.weight;
     return AlertDialog(
-      title: Text(weight ? 'Weight (kg)' : 'Reps'),
+      title: Text(widget.title),
       content: TextField(
         controller: _ctrl,
         autofocus: true,
@@ -457,6 +469,7 @@ class _SetRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final w = context.watch<WorkoutController>();
     final s = w.entry(ex, set);
+    final timed = w.exercises[ex].plan.timed;
     final isActive = w.active == (ex: ex, set: set);
     final editable = !s.done;
     return InkWell(
@@ -476,20 +489,29 @@ class _SetRow extends StatelessWidget {
             Expanded(
               child: Column(
                 children: [
+                  if (!timed)
+                    _Stepper(
+                      text: s.weight == null ? '– kg' : '${_kg(s.weight!)} kg',
+                      onMinus: editable
+                          ? () => w.bumpWeight(ex, set, -2.5)
+                          : null,
+                      onPlus: editable
+                          ? () => w.bumpWeight(ex, set, 2.5)
+                          : null,
+                      onTap: editable
+                          ? () => onEdit(ex, set, weight: true)
+                          : null,
+                    ),
                   _Stepper(
-                    text: s.weight == null ? '– kg' : '${_kg(s.weight!)} kg',
+                    text: timed
+                        ? (s.reps == null ? '– min' : '${s.reps} min')
+                        : (s.reps == null ? '– reps' : '${s.reps} reps'),
                     onMinus: editable
-                        ? () => w.bumpWeight(ex, set, -2.5)
+                        ? () => w.bumpReps(ex, set, timed ? -5 : -1)
                         : null,
-                    onPlus: editable ? () => w.bumpWeight(ex, set, 2.5) : null,
-                    onTap: editable
-                        ? () => onEdit(ex, set, weight: true)
+                    onPlus: editable
+                        ? () => w.bumpReps(ex, set, timed ? 5 : 1)
                         : null,
-                  ),
-                  _Stepper(
-                    text: s.reps == null ? '– reps' : '${s.reps} reps',
-                    onMinus: editable ? () => w.bumpReps(ex, set, -1) : null,
-                    onPlus: editable ? () => w.bumpReps(ex, set, 1) : null,
                     onTap: editable
                         ? () => onEdit(ex, set, weight: false)
                         : null,

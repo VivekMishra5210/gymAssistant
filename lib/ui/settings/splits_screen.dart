@@ -79,7 +79,10 @@ class _SplitsScreenState extends State<SplitsScreen> {
 
   Future<void> _delete(_Split s) async {
     if (s.id == _activeId) {
-      return showSnack(context, 'Follow another split before deleting this one');
+      return showSnack(
+        context,
+        'Follow another split before deleting this one',
+      );
     }
     final plan = _plan;
     final ok = await showDialog<bool>(
@@ -162,9 +165,13 @@ class _SplitsScreenState extends State<SplitsScreen> {
         },
         itemBuilder: (_) => [
           if (!active)
-            const PopupMenuItem(value: 'follow', child: Text('Follow this split')),
+            const PopupMenuItem(
+              value: 'follow',
+              child: Text('Follow this split'),
+            ),
           const PopupMenuItem(value: 'rename', child: Text('Rename')),
-          if (!active) const PopupMenuItem(value: 'delete', child: Text('Delete')),
+          if (!active)
+            const PopupMenuItem(value: 'delete', child: Text('Delete')),
         ],
       ),
     );

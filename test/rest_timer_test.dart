@@ -248,4 +248,20 @@ void main() {
       expect(alerts.calls.last, 'cancel');
     },
   );
+
+  test('cardio set needs only minutes and logs weight 0', () async {
+    final store = RecordingStore();
+    final w = WorkoutController(
+      FakeClock(DateTime(2026, 1, 1, 10)),
+      const [PlanExercise('Treadmill', 2, 60, timed: true)],
+      name: 'Cardio',
+      store: store,
+    );
+    expect(w.canTick(0, 0), isFalse);
+    await w.bumpReps(0, 0, 5);
+    expect(w.canTick(0, 0), isTrue);
+    await w.tick(0, 0);
+    expect(store.saved, ['0/0 0.0×5']);
+    w.dispose();
+  });
 }
