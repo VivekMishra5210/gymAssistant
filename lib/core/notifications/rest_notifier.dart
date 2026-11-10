@@ -46,7 +46,7 @@ class RestNotifier implements RestAlerts {
   Future<bool> init() async {
     await _plugin.initialize(
       settings: const InitializationSettings(
-        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+        android: AndroidInitializationSettings('ic_stat_dumbbell'),
       ),
       onDidReceiveNotificationResponse: (_) => taps.value++,
     );

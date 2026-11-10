@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 
 import '../../core/db/app_database.dart';
+import '../../core/db/backup.dart' as backup;
 
 /// Cycle pointer (SPEC §6): 1-based position + the date it applies from.
 typedef Pointer = ({int position, String since});
@@ -105,6 +106,11 @@ class StateRepository {
 
   Future<void> reset({required bool everything, required String today}) =>
       resetData(_db, everything: everything, today: today);
+
+  Future<bool> exportBackup(String today) => backup.exportBackup(_db, today);
+
+  /// Restarts the app on success.
+  Future<bool> restoreBackup() => backup.restoreBackup(_db);
 
   Future<Settings> settings() async {
     final r = await _row();

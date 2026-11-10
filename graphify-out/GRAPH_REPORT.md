@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `b80accf6`
+- Built from commit: `cf1c1a5a`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -79,10 +79,10 @@
   test/rest_timer_test.dart → lib/logic/workout_controller.dart
 - `graphify Knowledge Graph (graphify-out/)` --conceptually_related_to--> `Gym Assistant App`  [INFERRED]
   CLAUDE.md → SPEC.md
-- `_DashboardScreenState` --references--> `RestNotifier`  [EXTRACTED]
-  lib/ui/dashboard/dashboard_screen.dart → lib/core/notifications/rest_notifier.dart
-- `_BmiScreenState` --references--> `Clock`  [EXTRACTED]
-  lib/ui/bmi/bmi_screen.dart → lib/core/time/clock.dart
+- `_archive` --references--> `PlanRepository`  [EXTRACTED]
+  lib/ui/settings/exercises_screen.dart → lib/data/repositories/plan_repository.dart
+- `createExercise` --references--> `PlanRepository`  [EXTRACTED]
+  lib/ui/settings/exercises_screen.dart → lib/data/repositories/plan_repository.dart
 
 ## Import Cycles
 - None detected.
@@ -259,7 +259,7 @@ Cohesion: 0.33
 Nodes (6): CycleService, build, DayDetailScreen, OnboardingView, build, ExerciseProgressScreen
 
 ## Knowledge Gaps
-- **475 isolated node(s):** `clock`, `cycle`, `plan`, `state`, `notifier` (+470 more)
+- **475 isolated node(s):** `_schemaV1`, `_schemaV2`, `_schemaV3`, `_schemaV4`, `path` (+470 more)
   These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 569 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **5 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -268,7 +268,7 @@ _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `PlanRepository` connect `exercises_screen.dart` to `workout_editor_screen.dart`, `cycle_service.dart`, `app.dart`, `splits_screen.dart`, `plan_repository.dart`, `split_editor_screen.dart`?**
   _High betweenness centrality (0.053) - this node is a cross-community bridge._
-- **What connects `clock`, `cycle`, `plan` to the rest of the system?**
+- **What connects `_schemaV1`, `_schemaV2`, `_schemaV3` to the rest of the system?**
   _475 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `workout_screen.dart` be split into smaller, more focused modules?**
   _Cohesion score 0.045454545454545456 - nodes in this community are weakly interconnected._

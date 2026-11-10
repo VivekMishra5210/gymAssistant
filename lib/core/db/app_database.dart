@@ -98,11 +98,13 @@ const _schemaV4 = [
   'ALTER TABLE session_exercise ADD COLUMN timed INTEGER NOT NULL DEFAULT 0',
 ];
 
+const dbVersion = 4;
+
 Future<Database> openAppDatabase(Clock clock) async {
   final path = p.join(await getDatabasesPath(), 'gym_assistant.db');
   return openDatabase(
     path,
-    version: 4,
+    version: dbVersion,
     onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
     onCreate: (db, _) async {
       for (final sql in [

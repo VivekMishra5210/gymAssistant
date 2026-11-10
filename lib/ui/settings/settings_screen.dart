@@ -94,6 +94,52 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
   }
 
+  Future<void> _export() async {
+    final today = dateKey(context.read<Clock>().now());
+    try {
+      if (await _state.exportBackup(today) && mounted) {
+        showSnack(context, 'Backup saved');
+      }
+    } catch (e) {
+      if (mounted) showSnack(context, 'Backup failed: $e');
+    }
+  }
+
+  /// Replaces everything with the picked backup, then the app restarts.
+  Future<void> _restore() async {
+    final state = _state;
+    final notifier = context.read<RestNotifier>();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Restore a backup?'),
+        content: const Text(
+          'Everything on this phone is replaced by the backup you pick. '
+          'The app restarts after.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(c, true),
+            child: const Text('Pick backup'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await notifier.cancel().catchError((Object _) {});
+      await state.restoreBackup(); // restarts the app on success
+    } on FormatException catch (e) {
+      if (mounted) showSnack(context, e.message);
+    } catch (e) {
+      if (mounted) showSnack(context, 'Restore failed: $e');
+    }
+  }
+
   void _push(Widget screen) =>
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
 
@@ -190,6 +236,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ? () => _save(_rest(s, s.defaultRest + 15))
                         : null,
                   ),
+                ),
+                const Divider(),
+                ListTile(
+                  minTileHeight: 56,
+                  leading: const Icon(Icons.upload_file),
+                  title: const Text('Export backup'),
+                  subtitle: const Text(
+                    'Save all your data to Drive, Downloads…',
+                  ),
+                  onTap: _export,
+                ),
+                ListTile(
+                  minTileHeight: 56,
+                  leading: const Icon(Icons.settings_backup_restore),
+                  title: const Text('Restore backup'),
+                  subtitle: const Text(
+                    'Replace this phone\'s data with a backup',
+                  ),
+                  onTap: _restore,
                 ),
                 const Divider(),
                 ListTile(
