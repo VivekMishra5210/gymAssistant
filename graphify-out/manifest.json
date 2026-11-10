@@ -12,9 +12,9 @@
     "semantic_hash": ""
   },
   "SPEC.md": {
-    "mtime": 1794329557.6520433,
-    "seen": 1794329826.847799,
-    "ast_hash": "29451c717fb71f76a871b5ca707f4545",
+    "mtime": 1794334080.7827003,
+    "seen": 1794335228.8298154,
+    "ast_hash": "df15c3aeef21cdea3da27acd12bf293a",
     "semantic_hash": ""
   },
   "analysis_options.yaml": {
@@ -24,15 +24,15 @@
     "semantic_hash": ""
   },
   "android/app/build.gradle.kts": {
-    "mtime": 1794255963.379798,
-    "seen": 1794256515.160744,
-    "ast_hash": "8236677753e5d5319a5020eb0441dc7e",
+    "mtime": 1794333607.9481134,
+    "seen": 1794335228.8298154,
+    "ast_hash": "3ffffed3dd6040fe85a95f318fae0eaa",
     "semantic_hash": ""
   },
   "android/app/src/main/kotlin/com/vivek/gym_assistant/MainActivity.kt": {
-    "mtime": 1794005928.5887322,
-    "seen": 1794007259.1708157,
-    "ast_hash": "5af7686b8bc9f7b95304065dfacdfac0",
+    "mtime": 1794333441.6252837,
+    "seen": 1794335228.8298154,
+    "ast_hash": "945dca00ec13d0f7d68e70a3a533c920",
     "semantic_hash": ""
   },
   "android/build.gradle.kts": {
@@ -162,9 +162,9 @@
     "semantic_hash": ""
   },
   "lib/core/db/app_database.dart": {
-    "mtime": 1794329170.0941343,
-    "seen": 1794329826.847799,
-    "ast_hash": "7a4a0c6ec8d1c590fc5566f54f1f95a9",
+    "mtime": 1794333483.3157341,
+    "seen": 1794335228.8298154,
+    "ast_hash": "35c7d40a07b20f896409aa661911ae7a",
     "semantic_hash": ""
   },
   "lib/core/time/dates.dart": {
@@ -192,9 +192,9 @@
     "semantic_hash": ""
   },
   "lib/data/repositories/state_repository.dart": {
-    "mtime": 1794259713.254574,
-    "seen": 1794259734.6634994,
-    "ast_hash": "3a1e483bb1dcbf5afcf0693a83c6fe2f",
+    "mtime": 1794333534.6737516,
+    "seen": 1794335228.8298154,
+    "ast_hash": "d39cfc741a05e9bee46880b4699cf23e",
     "semantic_hash": ""
   },
   "lib/logic/cycle_service.dart": {
@@ -240,9 +240,9 @@
     "semantic_hash": ""
   },
   "lib/ui/settings/settings_screen.dart": {
-    "mtime": 1794301121.2326722,
-    "seen": 1794301255.3780067,
-    "ast_hash": "dc7da13af20331d44e44150aea915429",
+    "mtime": 1794333610.1805778,
+    "seen": 1794335228.8298154,
+    "ast_hash": "0ea78b487ec918100188025faa8404c5",
     "semantic_hash": ""
   },
   "lib/ui/settings/split_editor_screen.dart": {
@@ -264,9 +264,9 @@
     "semantic_hash": ""
   },
   "lib/core/notifications/rest_notifier.dart": {
-    "mtime": 1794257148.3114522,
-    "seen": 1794257802.8977418,
-    "ast_hash": "203d18e9907dd8b7fb103c04f54f2a2b",
+    "mtime": 1794333574.7848184,
+    "seen": 1794335228.8298154,
+    "ast_hash": "336fcc4cf5ae389f5f74b4809f39ace6",
     "semantic_hash": ""
   },
   "assets/sounds/rest_done.wav": {
@@ -315,6 +315,12 @@
     "mtime": 1794329213.2821424,
     "seen": 1794329826.847799,
     "ast_hash": "fa3681c71024bd4b15933e0d0a39350d",
+    "semantic_hash": ""
+  },
+  "lib/core/db/backup.dart": {
+    "mtime": 1794333473.171362,
+    "seen": 1794335228.8298154,
+    "ast_hash": "38dc575c3ab42e251dab73a280df437f",
     "semantic_hash": ""
   }
 }

@@ -21,3 +21,6 @@ graphify-out/cost.json
 /android/app/profile
 /android/app/release
 graphify-out/20*/
+
+# Claude Code local settings
+.claude/
